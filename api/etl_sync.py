@@ -202,6 +202,21 @@ class handler(BaseHTTPRequestHandler):
                 if col in df.columns:
                     df[col] = df[col].apply(clean_boolean)
 
+            # Converter campos inteiros (arredondar)
+            def clean_integer(value):
+                if pd.isna(value) or value == '' or value == '---':
+                    return None
+                try:
+                    return int(round(float(value)))
+                except:
+                    return None
+
+            integer_columns = ['prazo', 'prazo_medio_operacao']
+
+            for col in integer_columns:
+                if col in df.columns:
+                    df[col] = df[col].apply(clean_integer)
+
             # Converter DataFrame para lista de dicionários e limpar valores inválidos
             data_to_upsert = []
             for record in df.to_dict('records'):
