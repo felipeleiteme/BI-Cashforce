@@ -139,6 +139,45 @@ class handler(BaseHTTPRequestHandler):
             # Substituir NaN do pandas por None
             df = df.where(pd.notna(df), None)
 
+            # Converter campos monetários (remover R$ e converter para número)
+            def clean_currency(value):
+                if pd.isna(value) or value == '' or value == '---':
+                    return None
+                if isinstance(value, str):
+                    # Remover R$, espaços e converter vírgula para ponto
+                    value = value.replace('R$', '').replace(' ', '').replace('.', '').replace(',', '.')
+                    try:
+                        return float(value)
+                    except:
+                        return None
+                return value
+
+            money_columns = ['valor_bruto_duplicata', 'valor_liquido_duplicata', 'desconto_contrato',
+                           'abatimento', 'desagio_reais', 'tarifa_reais', 'ad_valorem_reais',
+                           'iof_reais', 'total_taxas_reais', 'liquido_operacao', 'receita_cashforce']
+
+            for col in money_columns:
+                if col in df.columns:
+                    df[col] = df[col].apply(clean_currency)
+
+            # Converter campos percentuais (remover % e converter para número)
+            def clean_percentage(value):
+                if pd.isna(value) or value == '' or value == '---':
+                    return None
+                if isinstance(value, str):
+                    value = value.replace('%', '').replace(' ', '').replace(',', '.')
+                    try:
+                        return float(value)
+                    except:
+                        return None
+                return value
+
+            percentage_columns = ['taxa_mes_percentual', 'ad_valorem_percentual', 'taxa_efetiva_mes_percentual']
+
+            for col in percentage_columns:
+                if col in df.columns:
+                    df[col] = df[col].apply(clean_percentage)
+
             # Converter campos de data para string (formato ISO)
             date_columns = ['data_operacao', 'data_aceite_proposta', 'data_inclusao_nf',
                            'data_emissao_nf', 'vencimento', 'data_pagamento',
@@ -148,6 +187,20 @@ class handler(BaseHTTPRequestHandler):
                 if col in df.columns:
                     df[col] = pd.to_datetime(df[col], errors='coerce')
                     df[col] = df[col].dt.strftime('%Y-%m-%d').replace('NaT', None)
+
+            # Converter campos booleanos
+            def clean_boolean(value):
+                if pd.isna(value) or value == '' or value == '---':
+                    return None
+                if isinstance(value, str):
+                    return value.lower() in ['sim', 'yes', 'true', '1']
+                return bool(value)
+
+            boolean_columns = ['termo_anexado', 'boleto_anexado', 'comprovante_deposito']
+
+            for col in boolean_columns:
+                if col in df.columns:
+                    df[col] = df[col].apply(clean_boolean)
 
             # Converter DataFrame para lista de dicionários e limpar valores inválidos
             data_to_upsert = []
