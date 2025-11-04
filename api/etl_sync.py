@@ -24,7 +24,8 @@ class handler(BaseHTTPRequestHandler):
 
             spreadsheet = gc.open(sheet_name)
             worksheet = spreadsheet.get_worksheet(0)
-            records = worksheet.get_all_records()
+            # Cabeçalho está na linha 4, então pular as 3 primeiras linhas
+            records = worksheet.get_all_records(head=4)
 
             # Passo 3: Transformar com Pandas
             df = pd.DataFrame(records)
