@@ -134,6 +134,16 @@ class handler(BaseHTTPRequestHandler):
             df = df.replace('', None)
             df = df.replace('nan', None)
 
+            # Converter campos de data para string (formato ISO)
+            date_columns = ['data_operacao', 'data_aceite_proposta', 'data_inclusao_nf',
+                           'data_emissao_nf', 'vencimento', 'data_pagamento',
+                           'data_pagamento_operacao', 'data_confirmacao_pagamento_operacao', 'dia_atual']
+
+            for col in date_columns:
+                if col in df.columns:
+                    df[col] = pd.to_datetime(df[col], errors='coerce')
+                    df[col] = df[col].dt.strftime('%Y-%m-%d').replace('NaT', None)
+
             data_to_upsert = df.to_dict('records')
 
             # Passo 5: Autenticar no Supabase
