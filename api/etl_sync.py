@@ -130,6 +130,9 @@ class handler(BaseHTTPRequestHandler):
             if df.empty:
                 raise ValueError("Nenhum registro válido encontrado (NFID obrigatório)")
 
+            # Remover duplicatas por NFID (manter o mais recente)
+            df = df.drop_duplicates(subset=['nfid'], keep='first')
+
             # Substituir valores vazios por None para campos numéricos e booleanos
             df = df.replace('', None)
             df = df.replace('nan', None)
