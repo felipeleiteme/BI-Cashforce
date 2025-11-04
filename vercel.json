@@ -1,7 +1,7 @@
 {
   "functions": {
     "api/etl_sync.py": {
-      "maxDuration": 60
+      "maxDuration": 300
     },
     "api/resumo_alert.py": {
       "maxDuration": 15
