@@ -13,7 +13,7 @@ jobs:
     steps:
       - name: Trigger ETL Sync
         run: |
-          response=$(curl -s -w "\n%{http_code}" https://bi-cashforce.vercel.app/api/_cron/etl_sync)
+          response=$(curl -s -w "\n%{http_code}" https://bi-cashforce.vercel.app/api/etl_sync)
           http_code=$(echo "$response" | tail -n1)
           body=$(echo "$response" | head -n-1)
 
