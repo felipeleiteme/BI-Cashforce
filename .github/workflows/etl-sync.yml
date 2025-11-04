@@ -1,0 +1,28 @@
+name: ETL Sync Hourly
+
+on:
+  schedule:
+    # Executa a cada hora (minuto 0)
+    - cron: '0 * * * *'
+  workflow_dispatch: # Permite executar manualmente
+
+jobs:
+  trigger-etl:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Trigger ETL Sync
+        run: |
+          response=$(curl -s -w "\n%{http_code}" https://bi-cashforce.vercel.app/api/_cron/etl_sync)
+          http_code=$(echo "$response" | tail -n1)
+          body=$(echo "$response" | head -n-1)
+
+          echo "HTTP Status: $http_code"
+          echo "Response: $body"
+
+          if [ "$http_code" != "200" ]; then
+            echo "❌ ETL sync failed with status $http_code"
+            exit 1
+          fi
+
+          echo "✅ ETL sync completed successfully"
