@@ -87,7 +87,7 @@ class handler(BaseHTTPRequestHandler):
                 "Ad Valorem R$": "ad_valorem_reais",
                 "IOF R$": "iof_reais",
                 "Total de taxas R$": "total_taxas_reais",
-                "Líquido da Operação": "liquido_operacao",
+                "Liquido da Operação": "liquido_operacao",  # Sem acento!
 
                 # Taxas Percentuais
                 "Taxa ao mês %": "taxa_mes_percentual",
