@@ -423,20 +423,47 @@ ORDER BY total DESC;
 
 ### Row Level Security (RLS)
 
-Para habilitar RLS (recomendado em produção):
+⚠️ **IMPORTANTE**: RLS está **HABILITADO** na tabela `propostas` para proteger os dados.
+
+**Configuração Atual (Produção):**
 
 ```sql
 -- Habilitar RLS
 ALTER TABLE propostas ENABLE ROW LEVEL SECURITY;
 
--- Política de leitura (exemplo: apenas usuários autenticados)
-CREATE POLICY "Usuários autenticados podem ler propostas"
+-- Permitir leitura pública (para GPT e consultas via anon key)
+CREATE POLICY "Permitir leitura pública"
+  ON propostas FOR SELECT
+  USING (true);
+```
+
+**Como funciona:**
+- ✅ **Leitura pública permitida** - Qualquer um com a `anon key` pode fazer SELECT
+- ✅ **Escrita bloqueada** - INSERT, UPDATE, DELETE são bloqueados para `anon key`
+- ✅ **ETL funciona normalmente** - Usa `service_role key` que bypassa RLS
+- ✅ **GPT pode consultar** - Usa `anon key` apenas para leitura
+
+**Opções Alternativas:**
+
+Se você quiser restringir ainda mais o acesso, pode usar:
+
+```sql
+-- Opção 1: Apenas usuários autenticados
+CREATE POLICY "Apenas usuários autenticados podem ler"
   ON propostas FOR SELECT
   USING (auth.role() = 'authenticated');
 
--- Política de escrita (exemplo: apenas service_role)
-CREATE POLICY "Apenas service role pode inserir/atualizar"
-  ON propostas FOR ALL
+-- Opção 2: Apenas emails de um domínio específico
+CREATE POLICY "Apenas emails @cashforce.com"
+  ON propostas FOR SELECT
+  USING (
+    auth.jwt() ->> 'email' LIKE '%@cashforce.com'
+  );
+
+-- Opção 3: Apenas service_role (mais restritivo)
+-- Neste caso, o GPT NÃO funcionará
+CREATE POLICY "Apenas service role"
+  ON propostas FOR SELECT
   USING (auth.role() = 'service_role');
 ```
 

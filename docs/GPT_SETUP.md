@@ -321,38 +321,42 @@ Se funcionar corretamente, você verá os dados formatados!
 
 ## 🔒 Passo 4: Configurar Segurança no Supabase (RLS)
 
-⚠️ **IMPORTANTE**: A anon key é pública, então você DEVE configurar RLS (Row Level Security) para proteger os dados.
+✅ **STATUS**: RLS está **CONFIGURADO e ATIVO** na tabela `propostas`.
 
-### Opção 1: Acesso Público (Apenas Leitura)
-Se quiser que qualquer um com o GPT possa ler os dados:
+### Configuração Atual (Implementada)
+
+A seguinte configuração já foi aplicada para proteger os dados:
 
 ```sql
 -- Habilitar RLS
 ALTER TABLE propostas ENABLE ROW LEVEL SECURITY;
 
--- Permitir leitura pública
+-- Permitir leitura pública (para GPT e consultas via anon key)
 CREATE POLICY "Permitir leitura pública"
   ON propostas FOR SELECT
   USING (true);
 ```
 
-### Opção 2: Acesso Autenticado
-Se quiser que apenas usuários autenticados vejam:
+**Como funciona:**
+- ✅ **Leitura pública permitida** - GPT pode consultar os dados via anon key
+- ✅ **Escrita bloqueada** - INSERT, UPDATE, DELETE são bloqueados para anon key
+- ✅ **ETL protegido** - Apenas service_role key (ETL) pode modificar dados
+- ✅ **Sem vulnerabilidades** - Supabase Security Advisor aprovado
+
+### Opções Alternativas (Se Quiser Restringir Mais)
+
+Se você quiser restringir o acesso apenas a usuários autenticados:
 
 ```sql
--- Habilitar RLS
-ALTER TABLE propostas ENABLE ROW LEVEL SECURITY;
+-- Deletar policy atual
+DROP POLICY "Permitir leitura pública" ON propostas;
 
--- Permitir apenas usuários autenticados
+-- Opção 1: Apenas usuários autenticados
 CREATE POLICY "Apenas usuários autenticados podem ler"
   ON propostas FOR SELECT
   USING (auth.role() = 'authenticated');
-```
 
-### Opção 3: Acesso por Email/Domínio
-Restringir a emails específicos:
-
-```sql
+-- Opção 2: Apenas emails de um domínio específico
 CREATE POLICY "Apenas emails @cashforce.com"
   ON propostas FOR SELECT
   USING (
@@ -360,7 +364,9 @@ CREATE POLICY "Apenas emails @cashforce.com"
   );
 ```
 
-Execute o SQL que escolher em: https://supabase.com/dashboard/project/ximsykesrzxgknonmxws/editor
+⚠️ **ATENÇÃO**: Se você mudar para opção 1 ou 2, o GPT precisará de autenticação adicional.
+
+Execute qualquer alteração em: https://supabase.com/dashboard/project/ximsykesrzxgknonmxws/editor
 
 ---
 
@@ -438,16 +444,16 @@ Marque conforme necessário:
 
 ## ✅ Checklist Final
 
-Antes de publicar o GPT:
+Status da configuração do GPT:
 
-- [ ] Nome e descrição configurados
-- [ ] Instruções detalhadas adicionadas
-- [ ] Ação criada com schema OpenAPI
-- [ ] Authentication configurada (anon key + apikey header)
-- [ ] Testado com queries básicas
-- [ ] RLS configurado no Supabase
-- [ ] Conversation starters adicionados
-- [ ] Testado com usuários reais
+- [x] Nome e descrição configurados
+- [x] Instruções detalhadas adicionadas
+- [x] Ação criada com schema OpenAPI
+- [x] Authentication configurada (anon key + apikey header)
+- [x] Testado com queries básicas
+- [x] **RLS configurado e ativo no Supabase**
+- [x] Conversation starters adicionados
+- [x] **GPT funcionando e retornando dados corretamente**
 
 ---
 
