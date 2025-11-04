@@ -1,0 +1,164 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "BI-Cashforce API",
+    "description": "API para consultar operações financeiras do Cashforce via Supabase",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "https://ximsykesrzxgknonmxws.supabase.co/rest/v1"
+    }
+  ],
+  "paths": {
+    "/propostas": {
+      "get": {
+        "operationId": "getPropostas",
+        "summary": "Buscar propostas/operações financeiras",
+        "description": "Retorna lista de propostas com filtros opcionais. Suporta filtros por CNPJ, NFID, grupo econômico, status, datas, etc.",
+        "parameters": [
+          {
+            "name": "cnpj_comprador",
+            "in": "query",
+            "description": "Filtrar por CNPJ do comprador. Use formato: eq.02.183.783/0009-79",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "nfid",
+            "in": "query",
+            "description": "Filtrar por NFID (ID único da nota fiscal). Use formato: eq.NFe35221109161713000101550010000203311800421109",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "grupo_economico",
+            "in": "query",
+            "description": "Filtrar por grupo econômico. Use formato: like.*LOJAS SUMIRÊ* ou ilike.*sumire* (case insensitive)",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "razao_social_comprador",
+            "in": "query",
+            "description": "Filtrar por razão social do comprador. Use formato: like.*LOJAS* ou ilike.*lojas*",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status_proposta",
+            "in": "query",
+            "description": "Filtrar por status da proposta. Use formato: eq.Aprovada",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status_pagamento",
+            "in": "query",
+            "description": "Filtrar por status de pagamento. Use formato: eq.Pago ou eq.Pendente",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "parceiro",
+            "in": "query",
+            "description": "Filtrar por parceiro. Use formato: eq.CASHFORCE",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "data_operacao",
+            "in": "query",
+            "description": "Filtrar por data de operação. Use formato: gte.2023-01-01 (maior ou igual) ou lte.2023-12-31 (menor ou igual)",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "valor_bruto_duplicata",
+            "in": "query",
+            "description": "Filtrar por valor bruto. Use formato: gte.1000.00 ou lte.10000.00",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "select",
+            "in": "query",
+            "description": "Selecionar colunas específicas. Padrão: * (todas). Exemplo: numero_proposta,nfid,valor_bruto_duplicata",
+            "schema": {
+              "type": "string",
+              "default": "*"
+            }
+          },
+          {
+            "name": "order",
+            "in": "query",
+            "description": "Ordenar resultados. Exemplo: data_operacao.desc ou valor_bruto_duplicata.asc",
+            "schema": {
+              "type": "string",
+              "default": "created_at.desc"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Limitar número de resultados. Padrão: 10, Máximo recomendado: 100",
+            "schema": {
+              "type": "integer",
+              "default": 10,
+              "maximum": 100
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "description": "Pular N registros (paginação). Exemplo: 0, 10, 20...",
+            "schema": {
+              "type": "integer",
+              "default": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Lista de propostas",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": { "type": "integer" },
+                      "numero_proposta": { "type": "string" },
+                      "nfid": { "type": "string" },
+                      "cnpj_comprador": { "type": "string" },
+                      "razao_social_comprador": { "type": "string" },
+                      "grupo_economico": { "type": "string" },
+                      "valor_bruto_duplicata": { "type": "number" },
+                      "valor_liquido_duplicata": { "type": "number" },
+                      "status_proposta": { "type": "string" },
+                      "status_pagamento": { "type": "string" },
+                      "data_operacao": { "type": "string", "format": "date" },
+                      "parceiro": { "type": "string" },
+                      "razao_social_fornecedor": { "type": "string" },
+                      "cnpj_fornecedor": { "type": "string" }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,8 +1,8 @@
-# BI-Cashforce - Pipeline ETL
+# BI-Cashforce - Pipeline ETL + GPT Integrado
 
 [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/felipeleiteme/BI-Cashforce)
 
-Pipeline automatizado de ETL (Extração, Transformação e Carga) que sincroniza dados de operações financeiras do Google Sheets para o Supabase.
+Pipeline automatizado de ETL (Extração, Transformação e Carga) que sincroniza dados de operações financeiras do Google Sheets para o Supabase + Assistente GPT customizado para consultas inteligentes em linguagem natural.
 
 ## 🚀 Início Rápido
 
@@ -21,42 +21,93 @@ vercel --prod
 
 ## 📋 Visão Geral
 
-Este projeto implementa um pipeline serverless que:
+Este projeto implementa um pipeline serverless completo que:
 
-- 📊 **Extrai** dados da planilha "Operações" no Google Sheets (59 colunas)
-- 🔄 **Transforma** os dados (limpa, normaliza e mapeia colunas)
-- 💾 **Carrega** no banco de dados Supabase (PostgreSQL)
-- ⏰ **Executa automaticamente** a cada hora via Vercel Cron Job
+### Pipeline ETL
+- 📊 **Extrai** dados da planilha "Operações" no Google Sheets (90.521+ registros, 59 colunas)
+- 🔄 **Transforma** os dados (limpa, normaliza, converte tipos, remove duplicatas)
+- 💾 **Carrega** no banco de dados Supabase (PostgreSQL) via UPSERT
+- ⏰ **Executa automaticamente** 1x por dia (plano Hobby) ou de hora em hora (via GitHub Actions)
+- ✅ **877 registros** sincronizados com sucesso (1000 mais recentes, após limpeza)
+
+### Assistente GPT Integrado
+- 🤖 **Consultas em linguagem natural** - Pergunte em português sobre suas operações
+- 📈 **Análises automáticas** - Totalizadores, médias, insights e comparações
+- 🔍 **Filtros inteligentes** - Por CNPJ, grupo, status, data, valor, etc.
+- 📊 **Apresentação formatada** - Tabelas, resumos e recomendações
 
 ## 🏗️ Arquitetura
 
 ```
-Google Sheets → Vercel Cron → Python ETL → Supabase
+┌─────────────────┐
+│  Google Sheets  │  90.521+ registros
+│   "Operações"   │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│  Vercel Cron    │  1x por dia (9h)
+│  GitHub Actions │  ou de hora em hora
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│ Python ETL      │  Limpa, valida, converte
+│   etl_sync.py   │  877 registros processados
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│    Supabase     │  PostgreSQL
+│   (propostas)   │  59 colunas
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│   GPT Custom    │  Consultas em linguagem natural
+│  (Actions API)  │  Análises inteligentes
+└─────────────────┘
 ```
 
 ### Stack Tecnológica
 
+**Backend ETL:**
 - **Runtime**: Python 3.9 (Vercel Serverless Functions)
-- **Agendador**: Vercel Cron Jobs (horário)
-- **Fonte**: Google Sheets API
+- **Agendador**: Vercel Cron Jobs + GitHub Actions
+- **Fonte**: Google Sheets API (gspread)
 - **Destino**: Supabase (PostgreSQL)
-- **Libs**: gspread, pandas, supabase-py
+- **Libs**: pandas (transformação), supabase-py (v2.7.4)
+
+**Assistente GPT:**
+- **Plataforma**: OpenAI GPT-4
+- **API**: Supabase REST API (PostgREST)
+- **Autenticação**: API Key (anon key) + Bearer token
+- **Schema**: OpenAPI 3.1.0
 
 ## 📁 Estrutura do Projeto
 
 ```
 BI-Cashforce/
 ├── api/
-│   └── _cron/
-│       └── etl_sync.py          # Função serverless do ETL
+│   ├── etl_sync.py              # Função serverless principal do ETL
+│   └── test.py                  # Endpoint de diagnóstico
+├── .github/
+│   └── workflows/
+│       └── etl-sync.yml         # GitHub Actions (execução horária)
 ├── docs/
-│   ├── README.md                # Documentação completa
-│   ├── SETUP.md                 # Guia de configuração detalhado
-│   └── DATABASE.md              # Schema e queries SQL
+│   ├── README.md                # Documentação completa do projeto
+│   ├── SETUP.md                 # Guia de configuração passo a passo
+│   ├── DATABASE.md              # Schema do banco (59 colunas)
+│   ├── GPT_SETUP.md             # 🆕 Guia de configuração do GPT
+│   ├── OPENAPI_SCHEMA.json      # 🆕 Schema OpenAPI para GPT Actions
+│   └── TROUBLESHOOTING.md       # Soluções de problemas comuns
 ├── .env.example                 # Template de variáveis de ambiente
 ├── .gitignore                   # Arquivos ignorados
-├── vercel.json                  # Configuração Vercel + Cron
-└── requirements.txt             # Dependências Python
+├── vercel.json                  # Configuração Vercel
+├── requirements.txt             # Dependências Python
+├── LICENSE                      # Licença MIT
+├── DEPLOY.md                    # Guia de deploy
+└── README.md                    # Este arquivo
 ```
 
 ## ⚙️ Configuração
@@ -213,6 +264,7 @@ vercel dev
 - [📖 README Completo](./docs/README.md) - Arquitetura, funcionamento e troubleshooting
 - [⚙️ Guia de Setup](./docs/SETUP.md) - Configuração passo a passo
 - [💾 Schema do Banco](./docs/DATABASE.md) - Estrutura completa e queries úteis
+- [🤖 Configuração do GPT](./docs/GPT_SETUP.md) - Como configurar o assistente GPT customizado
 
 ## 🤝 Contribuindo
 
@@ -230,9 +282,11 @@ Contribuições são bem-vindas! Por favor:
 
 - ✅ Pipeline ETL inicial
 - ✅ Mapeamento de 59 colunas
-- ✅ Cron Job horário
+- ✅ Cron Job horário (GitHub Actions)
 - ✅ UPSERT com conflito por NFID
 - ✅ Documentação completa
+- ✅ Assistente GPT customizado integrado
+- ✅ 877 registros sincronizados com sucesso
 
 ## 📄 Licença
 
