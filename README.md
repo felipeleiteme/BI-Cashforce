@@ -24,11 +24,12 @@ vercel --prod
 Este projeto implementa um pipeline serverless completo que:
 
 ### Pipeline ETL
-- 📊 **Extrai** dados da planilha "Operações" no Google Sheets (90.521+ registros, 59 colunas)
+- 📊 **Extrai** dados da planilha "Operações" no Google Sheets (90 mil+ registros, 59 colunas)
 - 🔄 **Transforma** os dados (limpa, normaliza, converte tipos, remove duplicatas)
-- 💾 **Carrega** no banco de dados Supabase (PostgreSQL) via UPSERT
-- ⏰ **Executa automaticamente** 1x por dia (plano Hobby) ou de hora em hora (via GitHub Actions)
-- ✅ **877 registros** sincronizados com sucesso (1000 mais recentes, após limpeza)
+- 💾 **Carrega** todo o histórico no Supabase (PostgreSQL) via UPSERT em lotes de 5k registros
+- 🔁 **Atualiza** a materialized view `propostas_resumo_mensal` após cada sincronização
+- ⏰ **Executa automaticamente** 1x por dia (plano Hobby) ou de hora em hora (workflow GitHub Actions)
+- ✅ **73.227 registros** sincronizados na última execução completa (após sanitização)
 
 ### Assistente GPT Integrado
 - 🤖 **Consultas em linguagem natural** - Pergunte em português sobre suas operações
@@ -40,7 +41,7 @@ Este projeto implementa um pipeline serverless completo que:
 
 ```
 ┌─────────────────┐
-│  Google Sheets  │  90.521+ registros
+│  Google Sheets  │  90k+ registros
 │   "Operações"   │
 └────────┬────────┘
          │
@@ -52,20 +53,25 @@ Este projeto implementa um pipeline serverless completo que:
          │
          ▼
 ┌─────────────────┐
-│ Python ETL      │  Limpa, valida, converte
-│   etl_sync.py   │  877 registros processados
+│ Python ETL      │  Limpa, normaliza, agrupa
+│  api/etl_sync.py│
 └────────┬────────┘
          │
          ▼
-┌─────────────────┐
-│    Supabase     │  PostgreSQL
-│   (propostas)   │  59 colunas
-└────────┬────────┘
-         │
+┌────────────────────────────┐
+│      Supabase (Postgres)   │
+│  propostas (tabela base)   │
+└────────┬────────┬──────────┘
+         │        │ refresh_propostas_resumo_mensal()
+         │        ▼
+         │  ┌─────────────────────────┐
+         │  │ Materialized View + API │
+         │  │  propostas_resumo_mensal│
+         │  └─────────────────────────┘
          ▼
 ┌─────────────────┐
 │   GPT Custom    │  Consultas em linguagem natural
-│  (Actions API)  │  Análises inteligentes
+│  (Actions API)  │  Insights e alertas
 └─────────────────┘
 ```
 
@@ -90,23 +96,27 @@ Este projeto implementa um pipeline serverless completo que:
 BI-Cashforce/
 ├── api/
 │   ├── etl_sync.py              # Função serverless principal do ETL
-│   └── test.py                  # Endpoint de diagnóstico
-├── .github/
-│   └── workflows/
-│       └── etl-sync.yml         # GitHub Actions (execução horária)
+│   ├── resumo_alert.py          # Endpoint para alertas de volume
+│   └── test.py                  # Diagnóstico de integração com Sheets
 ├── docs/
-│   ├── README.md                # Documentação completa do projeto
-│   ├── SETUP.md                 # Guia de configuração passo a passo
-│   ├── DATABASE.md              # Schema do banco (59 colunas)
-│   ├── GPT_SETUP.md             # 🆕 Guia de configuração do GPT
-│   ├── OPENAPI_SCHEMA.json      # 🆕 Schema OpenAPI para GPT Actions
-│   └── TROUBLESHOOTING.md       # Soluções de problemas comuns
-├── .env.example                 # Template de variáveis de ambiente
-├── .gitignore                   # Arquivos ignorados
-├── vercel.json                  # Configuração Vercel
+│   ├── README.md                # Índice da documentação
+│   ├── assistant/
+│   │   └── gpt_setup.md         # Guia do assistente GPT
+│   ├── guides/
+│   │   ├── deploy.md            # Passo a passo de deploy
+│   │   ├── setup.md             # Configuração completa
+│   │   └── troubleshooting.md   # Checklists e correções
+│   └── reference/
+│       ├── database.md          # Esquema detalhado da tabela propostas
+│       └── openapi_schema.json  # Schema OpenAPI para Actions
+├── scripts/
+│   ├── filter_new_records.py    # CLI para filtrar CSVs locais
+│   └── test_supabase_api.sh     # Smoke tests dos endpoints REST
+├── supabase/
+│   └── propostas_resumo_mensal.sql # MV + função de refresh
+├── .github/workflows/etl-sync.yml  # Disparo horário do ETL
 ├── requirements.txt             # Dependências Python
-├── LICENSE                      # Licença MIT
-├── DEPLOY.md                    # Guia de deploy
+├── vercel.json                  # Configuração Vercel
 └── README.md                    # Este arquivo
 ```
 
@@ -132,10 +142,10 @@ BI-Cashforce/
 
 1. **Google Cloud**: Crie Service Account e habilite Google Sheets API
 2. **Google Sheets**: Compartilhe planilha com email da Service Account
-3. **Supabase**: Crie tabela `propostas` (veja `docs/DATABASE.md`)
+3. **Supabase**: Crie tabela `propostas` (veja `docs/reference/database.md`)
 4. **Vercel**: Configure variáveis de ambiente e faça deploy
 
-📚 **Guia completo**: [docs/SETUP.md](./docs/SETUP.md)
+📚 **Guia completo**: [docs/guides/setup.md](./docs/guides/setup.md)
 
 ## 🚀 Deploy
 
@@ -177,7 +187,7 @@ O ETL mapeia **59 colunas** da planilha para o banco:
 - **Pagamento**: forma, vencimento, status
 - **Anexos**: termo, boleto, comprovante
 
-Ver detalhes completos: [docs/DATABASE.md](./docs/DATABASE.md)
+Ver detalhes completos: [docs/reference/database.md](./docs/reference/database.md)
 
 ## ⏰ Agendamento
 
@@ -204,7 +214,7 @@ Para alterar a frequência, edite `vercel.json`:
 vercel logs --follow
 
 # Logs da função ETL
-vercel logs api/_cron/etl_sync.py
+vercel logs api/etl_sync.py
 ```
 
 ### Resposta da API
@@ -213,7 +223,7 @@ vercel logs api/_cron/etl_sync.py
 ```json
 {
   "status": "success",
-  "rows_processed": 150
+  "rows_processed": 73227
 }
 ```
 
@@ -237,7 +247,7 @@ cp .env.example .env
 # Testar localmente com Vercel Dev
 vercel dev
 
-# Acessar: http://localhost:3000/api/_cron/etl_sync
+# Acessar: http://localhost:3000/api/etl_sync
 ```
 
 ## 🐛 Troubleshooting
@@ -257,14 +267,16 @@ vercel dev
 - `vercel.json` está commitado corretamente
 - Status do Cron Job no dashboard da Vercel
 
-📚 **Mais soluções**: [docs/README.md#troubleshooting](./docs/README.md#troubleshooting)
+📚 **Mais soluções**: [docs/guides/troubleshooting.md](./docs/guides/troubleshooting.md)
 
 ## 📚 Documentação Completa
 
 - [📖 README Completo](./docs/README.md) - Arquitetura, funcionamento e troubleshooting
-- [⚙️ Guia de Setup](./docs/SETUP.md) - Configuração passo a passo
-- [💾 Schema do Banco](./docs/DATABASE.md) - Estrutura completa e queries úteis
-- [🤖 Configuração do GPT](./docs/GPT_SETUP.md) - Como configurar o assistente GPT customizado
+- [⚙️ Guia de Setup](./docs/guides/setup.md) - Configuração passo a passo
+- [🚀 Guia de Deploy](./docs/guides/deploy.md) - Checklist de produção
+- [🛠️ Troubleshooting](./docs/guides/troubleshooting.md) - Diagnóstico rápido
+- [💾 Schema do Banco](./docs/reference/database.md) - Estrutura e consultas úteis
+- [🤖 Configuração do GPT](./docs/assistant/gpt_setup.md) - Assistente GPT customizado
 
 ## 🤝 Contribuindo
 
@@ -278,15 +290,22 @@ Contribuições são bem-vindas! Por favor:
 
 ## 📝 Changelog
 
+### v1.1.0 (2025-11-05)
+
+- ✅ ETL em lotes (5k) cobrindo todo o histórico da planilha
+- ✅ Refresh automático da materialized view `propostas_resumo_mensal`
+- ✅ Novo endpoint de alertas (`api/resumo_alert.py`)
+- ✅ Estrutura de documentação reorganizada (guides / reference / assistant)
+- ✅ Scripts utilitários movidos para `scripts/`
+
 ### v1.0.0 (2025-11-04)
 
 - ✅ Pipeline ETL inicial
 - ✅ Mapeamento de 59 colunas
 - ✅ Cron Job horário (GitHub Actions)
 - ✅ UPSERT com conflito por NFID
-- ✅ Documentação completa
+- ✅ Documentação inicial
 - ✅ Assistente GPT customizado integrado
-- ✅ 877 registros sincronizados com sucesso
 
 ## 📄 Licença
 

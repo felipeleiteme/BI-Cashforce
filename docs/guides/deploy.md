@@ -144,15 +144,15 @@ Ou pelo dashboard:
 1. Acesse https://vercel.com/dashboard
 2. Selecione o projeto `bi-cashforce`
 3. Vá em **Cron Jobs**
-4. Deve aparecer: `/api/_cron/etl_sync` com schedule `0 * * * *`
+4. Deve aparecer: `/api/etl_sync` com schedule `0 * * * *`
 5. Status: **Active** ✅
 
 ### 2. Testar a função manualmente
 
-Acesse a URL do projeto + `/api/_cron/etl_sync`:
+Acesse a URL do projeto + `/api/etl_sync`:
 
 ```
-https://bi-cashforce.vercel.app/api/_cron/etl_sync
+https://bi-cashforce.vercel.app/api/etl_sync
 ```
 
 Deve retornar:
@@ -160,17 +160,30 @@ Deve retornar:
 ```json
 {
   "status": "success",
-  "rows_processed": 150
+  "rows_processed": 73227
 }
 ```
 
-### 3. Ver os logs
+### 3. Validar os consolidados mensais
+
+Execute a consulta abaixo no Supabase SQL Editor ou via `curl`:
+
+```sql
+SELECT competencia_id, grupo_economico, quantidade_operacoes, total_bruto_duplicata
+FROM propostas_resumo_mensal
+ORDER BY competencia_id DESC
+LIMIT 5;
+```
+
+Os totais do mês corrente devem refletir a última execução do ETL (ex.: `MARFRIG` em `2025-10` com 64 operações).
+
+### 4. Ver os logs
 
 ```bash
 vercel logs --follow
 ```
 
-Ou no dashboard: **Deployments** → Clique no último → **Functions** → `/api/_cron/etl_sync.py`
+Ou no dashboard: **Deployments** → Clique no último → **Functions** → `/api/etl_sync.py`
 
 ---
 
@@ -258,7 +271,7 @@ oauth2client==4.1.3
 ### Ver execuções do Cron Job
 
 ```bash
-vercel logs api/_cron/etl_sync.py --follow
+vercel logs api/etl_sync.py --follow
 ```
 
 ### Dashboard da Vercel

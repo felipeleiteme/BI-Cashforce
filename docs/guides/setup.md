@@ -218,6 +218,13 @@ CREATE TRIGGER update_propostas_updated_at BEFORE UPDATE
 
 ⚠️ **Importante**: Use `service_role` key, não a `anon` key (o ETL precisa de permissões completas)
 
+### 3.4 Criar Materialized View de Consolidados
+
+1. No Supabase Studio, abra **SQL Editor**
+2. Carregue o conteúdo de [`supabase/propostas_resumo_mensal.sql`](../../supabase/propostas_resumo_mensal.sql)
+3. Execute o script (inclui criação da materialized view, índices e função `refresh_propostas_resumo_mensal()`)
+4. Opcional: rode `select refresh_propostas_resumo_mensal();` para validar a função e popular a view inicial
+
 ---
 
 ## 4. Vercel
@@ -297,7 +304,7 @@ vercel --prod
 ### 4.6 Verificar Cron Job
 
 1. No dashboard, vá em **"Cron Jobs"**
-2. Você deve ver: `/api/_cron/etl_sync` com schedule `0 * * * *`
+2. Você deve ver: `/api/etl_sync` com schedule `0 * * * *`
 3. Status deve estar **Active**
 
 ⚠️ **Nota**: Cron Jobs requerem plano **Pro** ou superior da Vercel
@@ -358,7 +365,7 @@ python test_local.py
 vercel dev
 ```
 
-Acesse: `http://localhost:3000/api/_cron/etl_sync`
+Acesse: `http://localhost:3000/api/etl_sync`
 
 ---
 

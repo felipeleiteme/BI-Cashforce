@@ -104,15 +104,16 @@ EOF
 python test_local.py
 ```
 
-### Solução 3: Adicionar Limite de Processamento
+### Solução 3: Validar Execução em Lotes
 
-Editar `api/etl_sync.py` para processar apenas primeiros N registros:
-
-```python
-# Após df = pd.DataFrame(records)
-# Limitar a 100 registros por execução
-df = df.head(100)
-```
+1. Garanta que o `vercel.json` está publicado com `\"maxDuration\": 300` para `api/etl_sync.py`
+2. Rode o endpoint manualmente e acompanhe o log:
+   ```bash
+   curl https://bi-cashforce.vercel.app/api/etl_sync
+   vercel logs https://bi-cashforce.vercel.app --scope felipeleites-projects-24aa8fa9
+   ```
+3. Nos logs, procure mensagens `[INFO] Processando lote ...` para confirmar o avanço
+4. Se algum lote falhar, capture a mensagem e execute novamente; os UPSERTs são idempotentes
 
 ### Solução 4: Habilitar Logs Detalhados
 
@@ -122,18 +123,19 @@ Acessar dashboard da Vercel:
 3. Clicar em `/api/etl_sync`
 4. Ver "Logs" da última execução
 
-### Solução 5: Aumentar Timeout (Requer Plano Pro)
+### Solução 5: Ajustar Timeout (Plano Pro obrigatório)
 
 Em `vercel.json`:
 ```json
 {
   "functions": {
     "api/etl_sync.py": {
-      "maxDuration": 60
+      "maxDuration": 300
     }
   }
 }
 ```
+Após editar, faça commit, push e `vercel --prod` para aplicar.
 
 ---
 
@@ -142,11 +144,12 @@ Em `vercel.json`:
 - [ ] Planilha "Operações" existe e está compartilhada?
 - [ ] Cabeçalho está na linha 4?
 - [ ] Coluna "NFID" existe e tem dados?
-- [ ] Quantas linhas de dados? (Se > 1000, considerar lotes)
+- [ ] Quantas linhas de dados? (Processamento em lotes está habilitado)
 - [ ] Variáveis de ambiente configuradas na Vercel?
 - [ ] Service Account tem permissão na planilha?
 - [ ] Tabela `propostas` existe no Supabase?
 - [ ] Service role key (não anon) está configurada?
+- [ ] Materialized view `propostas_resumo_mensal` criada/atualizada com sucesso?
 
 ---
 
@@ -167,6 +170,15 @@ SELECT * FROM propostas ORDER BY created_at DESC LIMIT 5;
 
 -- Ver se NFID está sendo inserido
 SELECT nfid FROM propostas WHERE nfid IS NOT NULL LIMIT 10;
+
+-- Conferir consolidados mensais
+SELECT competencia_id, grupo_economico, quantidade_operacoes
+FROM propostas_resumo_mensal
+ORDER BY competencia_id DESC
+LIMIT 5;
+
+-- Forçar refresh manual (se necessário)
+SELECT refresh_propostas_resumo_mensal();
 ```
 
 ### Google Sheets
@@ -180,10 +192,10 @@ SELECT nfid FROM propostas WHERE nfid IS NOT NULL LIMIT 10;
 
 Se nada funcionar, considere:
 
-1. **Migrar para Railway/Render** (sem limite de 10s)
-2. **Upgrade Vercel Pro** ($20/mês para 60s timeout)
-3. **Processar em Background** (queue system)
-4. **Reduzir dados** (filtrar últimos 30 dias apenas)
+1. Re-executar `supabase/propostas_resumo_mensal.sql` para garantir que a função e índices existem
+2. Checar se as chaves `SUPABASE_KEY` e `GOOGLE_SHEETS_CREDENTIALS_JSON` foram rotacionadas recentemente
+3. Validar se o cron job está ativo e se o workflow GitHub Actions está disparando
+4. Abrir um issue com logs recentes caso o problema persista
 
 ---
 

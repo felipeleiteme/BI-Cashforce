@@ -9,6 +9,33 @@ Documentação completa da estrutura da tabela `propostas` no Supabase.
 - **Total de Colunas**: 63 (59 de dados + 4 de controle)
 - **Chave Primária**: `id` (SERIAL)
 - **Chave Única**: `nfid` (usado no UPSERT)
+- **Materialized View**: `propostas_resumo_mensal_mv` (exposta como view `propostas_resumo_mensal`)
+
+---
+
+## 📈 View de Consolidados Mensais
+
+- **Origem**: Populada pela função `refresh_propostas_resumo_mensal()` executada ao final do ETL
+- **Colunas principais**:
+  - `competencia` / `competencia_id` (YYYY-MM)
+  - `grupo_economico`, `razao_social_comprador`, `parceiro`
+  - `quantidade_operacoes`
+  - `total_bruto_duplicata`, `total_liquido_duplicata`, `total_receita_cashforce`
+- **Consultas úteis**:
+```sql
+-- Totais de um grupo em uma competência específica
+SELECT quantidade_operacoes, total_bruto_duplicata, total_liquido_duplicata
+FROM propostas_resumo_mensal
+WHERE competencia_id = '2025-10'
+  AND grupo_economico ILIKE '%MARFRIG%';
+
+-- Top grupos por volume nos últimos meses
+SELECT competencia_id, grupo_economico, total_bruto_duplicata
+FROM propostas_resumo_mensal
+WHERE competencia_id >= '2025-01'
+ORDER BY total_bruto_duplicata DESC
+LIMIT 10;
+```
 
 ---
 
