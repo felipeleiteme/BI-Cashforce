@@ -36,13 +36,10 @@ class handler(BaseHTTPRequestHandler):
             if df.empty:
                 raise ValueError("DataFrame está vazio após conversão")
 
-            # Limitar a 1000 registros mais recentes para evitar timeout
             # Ordenar por data de operação (mais recente primeiro)
             if 'Data da operação' in df.columns:
                 df['Data da operação'] = pd.to_datetime(df['Data da operação'], errors='coerce')
                 df = df.sort_values('Data da operação', ascending=False)
-
-            df = df.head(1000)
 
             # Passo 4: Limpeza e Mapeamento
             column_mapping = {
@@ -146,14 +143,19 @@ class handler(BaseHTTPRequestHandler):
             def clean_currency(value):
                 if pd.isna(value) or value == '' or value == '---':
                     return None
+                if isinstance(value, (int, float)):
+                    return float(value)
                 if isinstance(value, str):
-                    # Remover R$, espaços e converter vírgula para ponto
-                    value = value.replace('R$', '').replace(' ', '').replace('.', '').replace(',', '.')
+                    value = value.replace('R$', '').strip()
+                    value = value.replace(' ', '')
+                    # Se houver vírgula, assumimos formato brasileiro (1.234,56)
+                    if ',' in value:
+                        value = value.replace('.', '').replace(',', '.')
                     try:
                         return float(value)
                     except:
                         return None
-                return value
+                return None
 
             money_columns = ['valor_bruto_duplicata', 'valor_liquido_duplicata', 'desconto_contrato',
                            'abatimento', 'desagio_reais', 'tarifa_reais', 'ad_valorem_reais',
@@ -243,11 +245,22 @@ class handler(BaseHTTPRequestHandler):
 
             supabase: Client = create_client(supabase_url, supabase_key)
 
-            # Passo 6: Fazer o UPSERT
-            response = supabase.table('propostas').upsert(
-                data_to_upsert,
-                on_conflict='nfid'
-            ).execute()
+            # Passo 6: Fazer o UPSERT em lotes para evitar timeouts
+            total_rows = len(data_to_upsert)
+            batch_size = 5000
+
+            print(f"[INFO] Iniciando UPSERT de {total_rows} registros em lotes de {batch_size}...")
+
+            for start in range(0, total_rows, batch_size):
+                end = start + batch_size
+                batch = data_to_upsert[start:end]
+                print(f"[INFO] Processando lote {start // batch_size + 1} ({len(batch)} registros)...")
+                supabase.table('propostas').upsert(
+                    batch,
+                    on_conflict='nfid'
+                ).execute()
+
+            print("[INFO] UPSERT em lotes concluído.")
 
             # Passo 6.1: Atualizar agregados (materialized view)
             try:
