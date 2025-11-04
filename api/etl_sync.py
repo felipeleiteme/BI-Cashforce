@@ -36,10 +36,18 @@ class handler(BaseHTTPRequestHandler):
             if df.empty:
                 raise ValueError("DataFrame está vazio após conversão")
 
+            # Limitar a 1000 registros mais recentes para evitar timeout
+            # Ordenar por data de operação (mais recente primeiro)
+            if 'Data da operação' in df.columns:
+                df['Data da operação'] = pd.to_datetime(df['Data da operação'], errors='coerce')
+                df = df.sort_values('Data da operação', ascending=False)
+
+            df = df.head(1000)
+
             # Passo 4: Limpeza e Mapeamento
             column_mapping = {
                 # Informações da Proposta
-                "Número da Proposta": "numero_proposta",
+                "Numero da Proposta": "numero_proposta",
                 "Status da Proposta": "status_proposta",
                 "Data da operação": "data_operacao",
                 "Data do Aceite da Proposta": "data_aceite_proposta",
