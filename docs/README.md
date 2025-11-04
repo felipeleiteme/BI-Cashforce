@@ -294,6 +294,23 @@ vercel env ls
 3. Dados no Supabase (query manual)
 4. Permissões da Service Account
 
+## 📊 Consolidados Mensais para o GPT
+
+- A view `public.propostas_resumo_mensal` utiliza uma **materialized view** (`propostas_resumo_mensal_mv`) para entregar totais mensais de forma rápida.
+- Execute o script `supabase/propostas_resumo_mensal.sql` no SQL Editor do Supabase para criar a MV, índices, grants e a função `refresh_propostas_resumo_mensal()`.
+- O ETL (`api/etl_sync.py`) chama automaticamente `refresh_propostas_resumo_mensal` após o UPSERT. Caso precise forçar manualmente:
+  ```sql
+  select refresh_propostas_resumo_mensal();
+  ```
+- Valide os endpoints REST com `scripts/test_supabase_api.sh` (requer `curl` e `jq`):
+  ```bash
+  export SUPABASE_URL="https://<projeto>.supabase.co"
+  export SUPABASE_ANON_KEY="..."
+  ./scripts/test_supabase_api.sh 2025-10 MARFRIG
+  ```
+- O endpoint `api/resumo_alert.py` consolida os totais e sinaliza quando `total_bruto_duplicata` ultrapassa o threshold (configurável via `ALERT_THRESHOLD_BRUTO` ou parâmetro `threshold`).
+- Para gerar alertas automáticos adicionais, consulte a view consolidada e aplique thresholds (ex.: `total_bruto_duplicata > 10000000`). Utilize esse sinal para priorizar insights no GPT.
+
 ## 📚 Recursos Adicionais
 
 - [Documentação Vercel Cron Jobs](https://vercel.com/docs/cron-jobs)

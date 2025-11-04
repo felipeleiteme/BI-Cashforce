@@ -249,6 +249,14 @@ class handler(BaseHTTPRequestHandler):
                 on_conflict='nfid'
             ).execute()
 
+            # Passo 6.1: Atualizar agregados (materialized view)
+            try:
+                supabase.rpc('refresh_propostas_resumo_mensal').execute()
+            except Exception as refresh_error:
+                # Não interromper o fluxo principal se a atualização falhar,
+                # mas registrar para inspeção nos logs da função.
+                print(f"[WARN] Falha ao atualizar resumo mensal: {refresh_error}")
+
             # Passo 7: Responder ao Cron
             self.send_response(200)
             self.send_header('Content-type', 'application/json')

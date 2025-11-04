@@ -160,5 +160,119 @@
         }
       }
     }
+    ,
+    "/propostas_resumo_mensal": {
+      "get": {
+        "operationId": "getResumoMensal",
+        "summary": "Obter totais mensais consolidados",
+        "description": "Retorna consolidados mensais de propostas por grupo econômico, comprador e parceiro. Ideal para gerar totais de grandes volumes antes de detalhar registros individuais.",
+        "parameters": [
+          {
+            "name": "competencia_id",
+            "in": "query",
+            "description": "Filtrar por competência no formato YYYY-MM. Exemplo: eq.2025-10",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "ano",
+            "in": "query",
+            "description": "Filtrar por ano (numérico). Exemplo: eq.2025",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "mes",
+            "in": "query",
+            "description": "Filtrar por mês (numérico). Exemplo: eq.10",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "grupo_economico",
+            "in": "query",
+            "description": "Filtrar por grupo econômico (suporta ilike). Exemplo: ilike.*MARFRIG*",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "razao_social_comprador",
+            "in": "query",
+            "description": "Filtrar por razão social do comprador. Exemplo: ilike.*MARFRIG*",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "parceiro",
+            "in": "query",
+            "description": "Filtrar por parceiro (eq.CASHFORCE, eq.SUPPLIER...).",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "order",
+            "in": "query",
+            "description": "Ordenar resultados. Exemplo: competencia.desc ou total_bruto_duplicata.desc",
+            "schema": {
+              "type": "string",
+              "default": "competencia.desc"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Limitar número de linhas retornadas. Padrão: 50.",
+            "schema": {
+              "type": "integer",
+              "default": 50,
+              "maximum": 500
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "description": "Paginar resultados pulando N linhas. Exemplo: 0, 50, 100...",
+            "schema": {
+              "type": "integer",
+              "default": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Lista de consolidados mensais",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "competencia": { "type": "string", "format": "date" },
+                      "competencia_id": { "type": "string" },
+                      "ano": { "type": "integer" },
+                      "mes": { "type": "integer" },
+                      "grupo_economico": { "type": "string" },
+                      "razao_social_comprador": { "type": "string" },
+                      "parceiro": { "type": "string" },
+                      "quantidade_operacoes": { "type": "integer" },
+                      "total_bruto_duplicata": { "type": "number" },
+                      "total_liquido_duplicata": { "type": "number" },
+                      "total_receita_cashforce": { "type": "number" }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
   }
 }
