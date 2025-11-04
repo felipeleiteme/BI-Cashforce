@@ -27,8 +27,14 @@ class handler(BaseHTTPRequestHandler):
             # Cabeçalho está na linha 4, então pular as 3 primeiras linhas
             records = worksheet.get_all_records(head=4)
 
+            if not records:
+                raise ValueError("Nenhum registro encontrado na planilha")
+
             # Passo 3: Transformar com Pandas
             df = pd.DataFrame(records)
+
+            if df.empty:
+                raise ValueError("DataFrame está vazio após conversão")
 
             # Passo 4: Limpeza e Mapeamento
             column_mapping = {
@@ -109,6 +115,17 @@ class handler(BaseHTTPRequestHandler):
             }
 
             df = df.rename(columns=column_mapping)
+
+            # Remover linhas onde nfid está vazio (obrigatório)
+            df = df[df['nfid'].notna() & (df['nfid'] != '')]
+
+            if df.empty:
+                raise ValueError("Nenhum registro válido encontrado (NFID obrigatório)")
+
+            # Substituir valores vazios por None para campos numéricos e booleanos
+            df = df.replace('', None)
+            df = df.replace('nan', None)
+
             data_to_upsert = df.to_dict('records')
 
             # Passo 5: Autenticar no Supabase
