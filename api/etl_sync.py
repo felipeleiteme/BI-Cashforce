@@ -91,7 +91,7 @@ class handler(BaseHTTPRequestHandler):
 
                 # Taxas Percentuais
                 "Taxa ao mês %": "taxa_mes_percentual",
-                "Ad Valorem %": "ad_valorem_percentual",
+                "Ad Valorem &": "ad_valorem_percentual",  # Atenção: & não %
                 "Taxa efetiva ao mês %": "taxa_efetiva_mes_percentual",
                 "Faixa de Taxa Cashforce": "faixa_taxa_cashforce",
 
