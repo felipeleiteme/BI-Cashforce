@@ -133,6 +133,11 @@ class handler(BaseHTTPRequestHandler):
             # Substituir valores vazios por None para campos numéricos e booleanos
             df = df.replace('', None)
             df = df.replace('nan', None)
+            df = df.replace('NaN', None)
+            df = df.replace('---', None)
+
+            # Substituir NaN do pandas por None
+            df = df.where(pd.notna(df), None)
 
             # Converter campos de data para string (formato ISO)
             date_columns = ['data_operacao', 'data_aceite_proposta', 'data_inclusao_nf',
