@@ -149,7 +149,19 @@ class handler(BaseHTTPRequestHandler):
                     df[col] = pd.to_datetime(df[col], errors='coerce')
                     df[col] = df[col].dt.strftime('%Y-%m-%d').replace('NaT', None)
 
-            data_to_upsert = df.to_dict('records')
+            # Converter DataFrame para lista de dicionários e limpar valores inválidos
+            data_to_upsert = []
+            for record in df.to_dict('records'):
+                clean_record = {}
+                for key, value in record.items():
+                    # Limpar valores inválidos
+                    if value in ['NaN', 'nan', 'None', '---', '']:
+                        clean_record[key] = None
+                    elif isinstance(value, float) and pd.isna(value):
+                        clean_record[key] = None
+                    else:
+                        clean_record[key] = value
+                data_to_upsert.append(clean_record)
 
             # Passo 5: Autenticar no Supabase
             supabase_url = os.environ.get('SUPABASE_URL')
