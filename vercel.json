@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "crons": [
+    {
+      "path": "/api/_cron/etl_sync",
+      "schedule": "0 * * * *"
+    }
+  ],
+  "functions": {
+    "api/_cron/etl_sync.py": {
+      "runtime": "python3.9"
+    }
+  }
+}
