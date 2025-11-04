@@ -314,7 +314,7 @@ Após o deploy bem-sucedido:
 Se encontrar problemas:
 
 1. Verifique os logs: `vercel logs --follow`
-2. Consulte a documentação: `docs/README.md` e `docs/SETUP.md`
+2. Consulte a documentação: `docs/README.md` e `docs/guides/setup.md`
 3. Abra uma issue no GitHub
 
 ---
