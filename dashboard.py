@@ -836,19 +836,16 @@ with tab1:
         st.metric(
             label="# NF Transportadas",
             value=f"{int(total_nf):,}",
-            delta=f"{get_delta(total_nf, (df_previous['total_nf_transportadas'].sum() if 'total_nf_transportadas' in df_previous.columns else 0)):+.1f}%"
         )
     with kpi5:
         st.metric(
             label="# Operações",
             value=f"{int(ops_atual):,}",
-            delta=f"{get_delta(ops_atual, ops_anterior):+.1f}%"
         )
     with kpi6:
         st.metric(
             label="Receita Cashforce",
             value=f"R$ {receita_atual:,.0f}",
-            delta=f"{get_delta(receita_atual, receita_anterior):+.1f}%"
         )
 
     st.markdown("<div style='margin-bottom: 1rem;'></div>", unsafe_allow_html=True)
@@ -860,33 +857,26 @@ with tab1:
         st.metric(
             label="Volume Total (VOP $)",
             value=f"R$ {volume_atual:,.0f}",
-            delta=f"{get_delta(volume_atual, volume_anterior):+.1f}%"
         )
     with kpi8:
         st.metric(
             label="Ticket Médio",
             value=f"R$ {ticket_atual:,.0f}",
-            delta=f"{get_delta(ticket_atual, (volume_anterior / ops_anterior if ops_anterior > 0 else 0)):+.1f}%"
         )
     with kpi9:
         st.metric(
             label="Margem %",
             value=f"{margem_atual:.2f}%",
-            delta=f"{(margem_atual - (receita_anterior / volume_anterior * 100 if volume_anterior > 0 else 0)):+.2f}pp"
         )
     with kpi10:
         st.metric(
             label="Taxa Efetiva Média",
             value=f"{taxa_media_atual:.2f}%",
-            delta=f"{(taxa_media_atual - taxa_media_anterior):+.2f}pp",
-            delta_color="inverse"
         )
     with kpi11:
         st.metric(
             label="Prazo Médio",
             value=f"{prazo_medio_atual:.2f} dias",
-            delta=f"{(prazo_medio_atual - prazo_medio_anterior):+.1f} dias",
-            delta_color="inverse"
         )
 
     st.markdown("---")
