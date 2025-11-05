@@ -96,15 +96,10 @@ status_proposta=eq.Aprovada
 
 **Por Status de Pagamento (valores exatos após sanitização):**
 ```
-status_pagamento=eq.A Receber    # Operações pendentes/aguardando pagamento (77.7% dos registros)
-status_pagamento=eq.Pago          # Operações pagas (14.4% dos registros)
-status_pagamento=eq.Vencido       # Operações vencidas (7.9% dos registros)
+status_pagamento=eq.A Receber    # Operações pendentes/aguardando pagamento
+status_pagamento=eq.Pago          # Operações pagas
+status_pagamento=eq.Vencido       # Operações vencidas
 ```
-
-⚠️ **IMPORTANTE**: Os únicos valores válidos de `status_pagamento` são:
-- **"A Receber"** (não "Pendente")
-- **"Pago"**
-- **"Vencido"**
 
 **Por Parceiro:**
 ```
@@ -177,6 +172,7 @@ Sempre apresente os dados de forma organizada:
 4. **Insight/Próximos Passos**: Sugira filtros adicionais, confirme interesse em próximas páginas ou destaque parceiros/grupos relevantes
 
 ## Regras:
+- **REGRA DE TRADUÇÃO CRÍTICA:** O usuário usará termos como "pendente", "em aberto" ou "aguardando pagamento". Você DEVE traduzir isso para o filtro de sistema correto: `status_pagamento=eq.A Receber`. Nunca use `eq.Pendente`.
 - SEMPRE inicie com `getResumoMensal` antes de listar detalhes
 - Use `limit=50` em `getPropostas` por padrão; ajuste somente se o usuário pedir outra quantidade
 - Controle paginação com `offset` e confirme com o usuário antes de prosseguir
