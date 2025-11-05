@@ -37,6 +37,13 @@ Este projeto implementa um pipeline serverless completo que:
 - 🔍 **Filtros inteligentes** - Por CNPJ, grupo, status, data, valor, etc.
 - 📊 **Apresentação formatada** - Tabelas, resumos e recomendações
 
+### Dashboard Self-Service (Streamlit)
+- 📊 **Interface visual interativa** - Dashboard moderno com gráficos e KPIs em tempo real
+- 🎯 **Filtros dinâmicos** - Período, grupo econômico e status de pagamento
+- 📈 **KPIs principais** - Volume total, operações e receita Cashforce
+- 🔍 **Análises visuais** - Top 10 grupos econômicos e distribuição por status
+- 🔒 **Seguro e escalável** - Usa `SUPABASE_ANON_KEY` com Row Level Security (RLS)
+
 ## 🏗️ Arquitetura
 
 ```
@@ -136,7 +143,8 @@ BI-Cashforce/
 | `GOOGLE_SHEETS_CREDENTIALS_JSON` | JSON da Service Account do Google Cloud |
 | `GOOGLE_SHEET_NAME` | Nome da planilha (ex: "Operações") |
 | `SUPABASE_URL` | URL do projeto Supabase |
-| `SUPABASE_KEY` | Service role key do Supabase |
+| `SUPABASE_KEY` | Service role key do Supabase (para ETL com permissões de escrita) |
+| `SUPABASE_ANON_KEY` | Anon key do Supabase (para Dashboard com segurança RLS) |
 
 ### Setup Rápido
 
@@ -237,13 +245,27 @@ vercel logs api/etl_sync.py
 
 ## 🛠️ Desenvolvimento Local
 
+### Executar o Dashboard Localmente
+
 ```bash
 # Instalar dependências
 pip install -r requirements.txt
 
 # Configurar .env
 cp .env.example .env
+# Edite .env e adicione SUPABASE_ANON_KEY
 
+# Executar o dashboard
+streamlit run dashboard.py
+
+# Acessar: http://localhost:8501
+```
+
+> **Nota sobre Segurança**: O dashboard utiliza `SUPABASE_ANON_KEY` em vez de `SUPABASE_KEY` (service_role) para garantir segurança. A chave `anon` é pública e segura, pois o acesso aos dados é controlado pelo Row Level Security (RLS) do Supabase, permitindo apenas operações de leitura autorizadas.
+
+### Testar API ETL Localmente
+
+```bash
 # Testar localmente com Vercel Dev
 vercel dev
 
