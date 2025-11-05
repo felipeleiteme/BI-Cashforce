@@ -123,7 +123,18 @@ st.markdown("""
 
     /* Header controls container */
     [data-testid="column"] > div {
+        display: flex;
+        flex-direction: column;
         gap: 0.5rem;
+        height: 100%;
+    }
+
+    [data-testid="column"] > div > div {
+        height: 100%;
+    }
+
+    [data-testid="column"] [data-testid="stMetric"] {
+        flex: 1;
     }
 
     /* Sidebar styling */
@@ -172,6 +183,7 @@ st.markdown("""
         padding: 1.5rem;
         box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
         transition: all 0.3s ease;
+        height: 100% !important;
     }
 
     [data-testid="stMetric"]:hover {
@@ -394,18 +406,30 @@ st.sidebar.header("Filtros")
 
 # Filtro de Período
 st.sidebar.markdown("### 📅 Período")
+
+# Garantir que default_start não ultrapasse max_date
+safe_default_start = min(default_start, max_date - timedelta(days=1))
+safe_default_end = max_date
+
 date_range = st.sidebar.date_input(
     "Selecione o período",
-    value=(default_start, max_date),
+    value=(safe_default_start, safe_default_end),
     min_value=min_date,
     max_value=max_date,
-    key=f"date_range_{min_date}_{max_date}",
+    key=f"date_range_v2_{min_date}_{max_date}",  # Mudei key para forçar reset
     label_visibility="collapsed"
 )
 if isinstance(date_range, tuple) and len(date_range) == 2:
     start_date, end_date = date_range
+    # Garantir que end_date não ultrapasse max_date
+    if end_date > max_date:
+        end_date = max_date
+        st.sidebar.warning(f"⚠️ Data final ajustada para {max_date.strftime('%d/%m/%Y')} (último dado disponível)")
 else:
     start_date = end_date = date_range if not isinstance(date_range, tuple) else date_range[0]
+    # Garantir que a data única não ultrapasse max_date
+    if end_date > max_date:
+        end_date = max_date
 
 st.sidebar.caption(f"📆 {start_date.strftime('%d/%m/%Y')} - {end_date.strftime('%d/%m/%Y')}")
 
