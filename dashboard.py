@@ -903,45 +903,61 @@ with tab1:
     with col_left:
         st.markdown("#### Volume por Parceiro")
         if 'parceiro' in df_filtered.columns and 'total_bruto_duplicata' in df_filtered.columns:
-            parceiro_volume = df_filtered.groupby('parceiro')['total_bruto_duplicata'].sum().sort_values(ascending=False)
+            parceiro_volume = (
+                df_filtered.groupby('parceiro', as_index=False)['total_bruto_duplicata']
+                .sum()
+                .sort_values('total_bruto_duplicata', ascending=False)
+            )
 
-            fig_parceiros = px.bar(
-                x=parceiro_volume.values,
-                y=parceiro_volume.index,
-                orientation='h',
-                labels={'x': 'Volume (R$)', 'y': 'Parceiro'},
-                color=parceiro_volume.values,
-                color_continuous_scale=[[0, '#ccfbf1'], [0.5, '#14b8a6'], [1, '#0d9488']]
-            )
-            fig_parceiros.update_layout(
-                showlegend=False,
-                height=400,
-                margin=dict(l=0, r=0, t=30, b=0),
-                xaxis_title="Volume (R$)",
-                yaxis_title=""
-            )
-            st.plotly_chart(fig_parceiros, use_container_width=True)
+            if parceiro_volume.empty:
+                st.info("Dados insuficientes para gerar o gráfico.")
+            else:
+                fig_parceiros = px.bar(
+                    parceiro_volume,
+                    x='total_bruto_duplicata',
+                    y='parceiro',
+                    orientation='h',
+                    labels={'total_bruto_duplicata': 'Volume (R$)', 'parceiro': 'Parceiro'},
+                    color='total_bruto_duplicata',
+                    color_continuous_scale=[[0, '#ccfbf1'], [0.5, '#14b8a6'], [1, '#0d9488']]
+                )
+                fig_parceiros.update_layout(
+                    showlegend=False,
+                    height=400,
+                    margin=dict(l=0, r=0, t=30, b=0),
+                    xaxis_title="Volume (R$)",
+                    yaxis_title=""
+                )
+                st.plotly_chart(fig_parceiros, use_container_width=True)
         else:
             st.info("Dados insuficientes para gerar o gráfico.")
 
     with col_right:
         st.markdown("#### Distribuição de Operações por Parceiro")
-        if 'parceiro' in df_filtered.columns:
-            ops_counts = df_filtered.groupby('parceiro')['quantidade_operacoes'].sum()
+        if 'parceiro' in df_filtered.columns and 'quantidade_operacoes' in df_filtered.columns:
+            ops_counts = (
+                df_filtered.groupby('parceiro', as_index=False)['quantidade_operacoes']
+                .sum()
+                .sort_values('quantidade_operacoes', ascending=False)
+            )
 
-            fig_ops_pie = px.pie(
-                values=ops_counts.values,
-                names=ops_counts.index,
-                color_discrete_sequence=['#14b8a6', '#10b981', '#0d9488', '#059669', '#0f766e'],
-                hole=0.4
-            )
-            fig_ops_pie.update_layout(
-                height=400,
-                margin=dict(l=0, r=0, t=30, b=0),
-                showlegend=True
-            )
-            fig_ops_pie.update_traces(textposition='inside', textinfo='percent+label')
-            st.plotly_chart(fig_ops_pie, use_container_width=True)
+            if ops_counts.empty:
+                st.info("Dados insuficientes para gerar o gráfico.")
+            else:
+                fig_ops_pie = px.pie(
+                    ops_counts,
+                    values='quantidade_operacoes',
+                    names='parceiro',
+                    color_discrete_sequence=['#14b8a6', '#10b981', '#0d9488', '#059669', '#0f766e'],
+                    hole=0.4
+                )
+                fig_ops_pie.update_layout(
+                    height=400,
+                    margin=dict(l=0, r=0, t=30, b=0),
+                    showlegend=True
+                )
+                fig_ops_pie.update_traces(textposition='inside', textinfo='percent+label')
+                st.plotly_chart(fig_ops_pie, use_container_width=True)
         else:
             st.info("Dados insuficientes para gerar o gráfico.")
 
