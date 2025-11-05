@@ -341,9 +341,13 @@ def load_main_data():
             # Converter competencia (formato YYYY-MM) para datetime
             df['competencia'] = pd.to_datetime(df['competencia'], errors='coerce')
 
-            # Converter valores numéricos da view
-            numeric_columns = ['quantidade_operacoes', 'total_bruto_duplicata',
-                             'total_liquido_duplicata', 'total_receita_cashforce']
+            # Converter valores numéricos da view (incluindo novos KPIs)
+            numeric_columns = [
+                'quantidade_operacoes', 'total_nf_transportadas',
+                'total_sacados', 'total_fornecedores',
+                'total_bruto_duplicata', 'total_liquido_duplicata',
+                'total_receita_cashforce', 'taxa_efetiva_media', 'prazo_medio'
+            ]
             for col in numeric_columns:
                 if col in df.columns:
                     df[col] = pd.to_numeric(df[col], errors='coerce')
@@ -377,7 +381,7 @@ else:
 
 # ==================== HEADER COM FILTROS ====================
 # Título e linha de controles
-title_col, controls_col = st.columns([2, 3])
+title_col, controls_col = st.columns([1, 2])
 
 with title_col:
     st.markdown("""
@@ -388,19 +392,43 @@ with title_col:
         </div>
     """, unsafe_allow_html=True)
 
+# Filtros movidos para o cabeçalho
 with controls_col:
-    # Filtro de período
-    date_range = st.date_input(
-        "📅 Período",
-        value=(default_start, max_date),
-        min_value=min_date,
-        max_value=max_date,
-        key=f"date_range_{min_date}_{max_date}"
-    )
-    if isinstance(date_range, tuple) and len(date_range) == 2:
-        start_date, end_date = date_range
-    else:
-        start_date = end_date = date_range if not isinstance(date_range, tuple) else date_range[0]
+    f1, f2, f3 = st.columns(3)
+
+    with f1:
+        # Filtro de período
+        date_range = st.date_input(
+            "📅 Período",
+            value=(default_start, max_date),
+            min_value=min_date,
+            max_value=max_date,
+            key=f"date_range_{min_date}_{max_date}"
+        )
+        if isinstance(date_range, tuple) and len(date_range) == 2:
+            start_date, end_date = date_range
+        else:
+            start_date = end_date = date_range if not isinstance(date_range, tuple) else date_range[0]
+
+    # Listas de opções para filtros
+    parceiros_all = sorted(df['parceiro'].dropna().unique().tolist()) if 'parceiro' in df.columns else []
+    financiadores_all = sorted(df['razao_social_financiador'].dropna().unique().tolist()) if 'razao_social_financiador' in df.columns else []
+
+    with f2:
+        selected_parceiros = st.multiselect(
+            "👥 Parceiro",
+            options=parceiros_all,
+            default=parceiros_all,
+            help="Filtro principal para análise por parceiro"
+        )
+
+    with f3:
+        selected_financiadores = st.multiselect(
+            "🏦 Financiador",
+            options=financiadores_all,
+            default=financiadores_all,
+            help="Filtrar por Razão Social do Financiador"
+        )
 
 # Linha de informação
 st.markdown("<div style='border-top: 1px solid var(--border); padding-top: 0.75rem; margin-top: 0.5rem;'></div>", unsafe_allow_html=True)
@@ -409,7 +437,9 @@ info_col1, info_col2 = st.columns([4, 1])
 with info_col1:
     st.markdown(f"""
         <p style='font-size: 0.875rem; color: var(--slate-600); margin: 0;'>
-            <span style='font-weight: 500;'>Período:</span> {start_date.strftime('%d/%m/%Y')} - {end_date.strftime('%d/%m/%Y')}
+            <span style='font-weight: 500;'>Período:</span> {start_date.strftime('%d/%m/%Y')} - {end_date.strftime('%d/%m/%Y')} |
+            <span style='font-weight: 500;'>Parceiros:</span> {len(selected_parceiros)} selecionados |
+            <span style='font-weight: 500;'>Financiadores:</span> {len(selected_financiadores)} selecionados
         </p>
     """, unsafe_allow_html=True)
 
@@ -422,45 +452,8 @@ with info_col2:
 
 st.markdown("<div style='margin-bottom: 1.5rem;'></div>", unsafe_allow_html=True)
 
-# ==================== SIDEBAR - FILTROS ====================
-st.sidebar.header("Filtros")
-
-# FILTRO PRINCIPAL: PARCEIRO
-st.sidebar.markdown("### Parceiros")
-parceiros_all = sorted(df['parceiro'].dropna().unique().tolist()) if 'parceiro' in df.columns else []
-selected_parceiros = st.sidebar.multiselect(
-    "Selecione os Parceiros",
-    options=parceiros_all,
-    default=parceiros_all,
-    help="Filtro principal para análise por parceiro",
-    label_visibility="collapsed"
-)
-
-if selected_parceiros:
-    st.sidebar.caption(f"✓ {len(selected_parceiros)} parceiro(s) selecionado(s)")
-else:
-    st.sidebar.warning("Nenhum parceiro selecionado")
-
-# Filtro de Grupo Econômico (não existe na view, remover)
-# grupos_economicos = sorted(df['grupo_economico'].dropna().unique().tolist()) if 'grupo_economico' in df.columns else []
-# selected_grupos = st.sidebar.multiselect(
-#     "Grupo Econômico",
-#     options=grupos_economicos,
-#     default=[]
-# )
-selected_grupos = []
-
-# Filtro de Status de Pagamento (não existe na view, remover)
-# status_pagamento = sorted(df['status_pagamento'].dropna().unique().tolist()) if 'status_pagamento' in df.columns else []
-# selected_status = st.sidebar.multiselect(
-#     "Status de Pagamento",
-#     options=status_pagamento,
-#     default=[]
-# )
-selected_status = []
-
-st.sidebar.markdown("---")
-st.sidebar.markdown("### Informações")
+# ==================== SIDEBAR (AGORA SÓ INFO) ====================
+st.sidebar.header("Informações Gerais")
 
 # Contar registros por parceiro
 parceiros_count = df.groupby('parceiro')['quantidade_operacoes'].sum().to_dict() if 'parceiro' in df.columns else {}
@@ -489,6 +482,10 @@ if 'competencia' in df_filtered.columns:
 if selected_parceiros and 'parceiro' in df_filtered.columns:
     df_filtered = df_filtered[df_filtered['parceiro'].isin(selected_parceiros)]
 
+# Filtro de Financiador
+if selected_financiadores and 'razao_social_financiador' in df_filtered.columns:
+    df_filtered = df_filtered[df_filtered['razao_social_financiador'].isin(selected_financiadores)]
+
 # ==================== CALCULAR PERÍODO ANTERIOR PARA COMPARAÇÃO ====================
 days_diff = (end_date - start_date).days
 previous_start = start_date - timedelta(days=days_diff)
@@ -500,6 +497,12 @@ if 'competencia' in df_previous.columns:
         (df_previous['competencia'].dt.date >= previous_start) &
         (df_previous['competencia'].dt.date <= previous_end)
     ]
+
+# Aplicar mesmos filtros de dimensão ao período anterior
+if selected_parceiros and 'parceiro' in df_previous.columns:
+    df_previous = df_previous[df_previous['parceiro'].isin(selected_parceiros)]
+if selected_financiadores and 'razao_social_financiador' in df_previous.columns:
+    df_previous = df_previous[df_previous['razao_social_financiador'].isin(selected_financiadores)]
 
 # ==================== TABS ====================
 tab1, tab2, tab3, tab4, tab5 = st.tabs([
@@ -768,72 +771,105 @@ with tab2:
 # ==================== TAB 1: OVERVIEW GERAL ====================
 with tab1:
     # KPIs Principais
-    st.markdown("### Indicadores Principais")
+    st.markdown("### Indicadores Principais (Grand Total)")
 
-    col1, col2, col3, col4, col5 = st.columns(5)
+    # Calcular KPIs
+    volume_atual = df_filtered['total_bruto_duplicata'].sum() if 'total_bruto_duplicata' in df_filtered.columns else 0
+    ops_atual = df_filtered['quantidade_operacoes'].sum() if 'quantidade_operacoes' in df_filtered.columns else 0
+    receita_atual = df_filtered['total_receita_cashforce'].sum() if 'total_receita_cashforce' in df_filtered.columns else 0
 
-    # Volume Total
-    with col1:
-        volume_atual = df_filtered['total_bruto_duplicata'].sum() if 'total_bruto_duplicata' in df_filtered.columns else 0
-        volume_anterior = df_previous['total_bruto_duplicata'].sum() if 'total_bruto_duplicata' in df_previous.columns else 0
-        delta_volume = ((volume_atual - volume_anterior) / volume_anterior * 100) if volume_anterior > 0 else 0
+    total_sacados = df_filtered['total_sacados'].sum() if 'total_sacados' in df_filtered.columns else 0
+    total_fornecedores = df_filtered['total_fornecedores'].sum() if 'total_fornecedores' in df_filtered.columns else 0
+    total_nf = df_filtered['total_nf_transportadas'].sum() if 'total_nf_transportadas' in df_filtered.columns else 0
 
+    # Médias devem ser ponderadas, mas para a view agregada usaremos mean()
+    taxa_media_atual = df_filtered['taxa_efetiva_media'].mean() if 'taxa_efetiva_media' in df_filtered.columns and not df_filtered.empty else 0
+    prazo_medio_atual = df_filtered['prazo_medio'].mean() if 'prazo_medio' in df_filtered.columns and not df_filtered.empty else 0
+
+    ticket_atual = volume_atual / ops_atual if ops_atual > 0 else 0
+    margem_atual = (receita_atual / volume_atual * 100) if volume_atual > 0 else 0
+
+    # (Cálculos do período anterior para deltas)
+    volume_anterior = df_previous['total_bruto_duplicata'].sum() if 'total_bruto_duplicata' in df_previous.columns else 0
+    ops_anterior = df_previous['quantidade_operacoes'].sum() if 'quantidade_operacoes' in df_previous.columns else 0
+    receita_anterior = df_previous['total_receita_cashforce'].sum() if 'total_receita_cashforce' in df_previous.columns else 0
+    taxa_media_anterior = df_previous['taxa_efetiva_media'].mean() if 'taxa_efetiva_media' in df_previous.columns and not df_previous.empty else 0
+    prazo_medio_anterior = df_previous['prazo_medio'].mean() if 'prazo_medio' in df_previous.columns and not df_previous.empty else 0
+
+    # Função helper para delta
+    def get_delta(atual, anterior):
+        if anterior > 0:
+            return ((atual - anterior) / anterior * 100)
+        return 0
+
+    # Linha 1 de KPIs
+    kpi1, kpi2, kpi3, kpi4, kpi5, kpi6 = st.columns(6)
+
+    with kpi1:
+        # Grupos Econômicos = contagem de grupos únicos (aproximação com total_sacados)
         st.metric(
-            label="Volume Total",
-            value=f"R$ {volume_atual:,.0f}",
-            delta=f"{delta_volume:+.1f}%"
+            label="# Grupos Econômicos",
+            value=f"{int(total_sacados):,}"
         )
-
-    # Número de Operações
-    with col2:
-        ops_atual = df_filtered['quantidade_operacoes'].sum() if 'quantidade_operacoes' in df_filtered.columns else 0
-        ops_anterior = df_previous['quantidade_operacoes'].sum() if 'quantidade_operacoes' in df_previous.columns else 0
-        delta_ops = ((ops_atual - ops_anterior) / ops_anterior * 100) if ops_anterior > 0 else 0
-
+    with kpi2:
+        st.metric(label="# Sacados", value=f"{int(total_sacados):,}")
+    with kpi3:
+        st.metric(label="# Fornecedores", value=f"{int(total_fornecedores):,}")
+    with kpi4:
         st.metric(
-            label="Operações",
+            label="# NF Transportadas",
+            value=f"{int(total_nf):,}",
+            delta=f"{get_delta(total_nf, (df_previous['total_nf_transportadas'].sum() if 'total_nf_transportadas' in df_previous.columns else 0)):+.1f}%"
+        )
+    with kpi5:
+        st.metric(
+            label="# Operações",
             value=f"{int(ops_atual):,}",
-            delta=f"{delta_ops:+.1f}%"
+            delta=f"{get_delta(ops_atual, ops_anterior):+.1f}%"
         )
-
-    # Receita Cashforce
-    with col3:
-        receita_atual = df_filtered['total_receita_cashforce'].sum() if 'total_receita_cashforce' in df_filtered.columns else 0
-        receita_anterior = df_previous['total_receita_cashforce'].sum() if 'total_receita_cashforce' in df_previous.columns else 0
-        delta_receita = ((receita_atual - receita_anterior) / receita_anterior * 100) if receita_anterior > 0 else 0
-
+    with kpi6:
         st.metric(
             label="Receita Cashforce",
             value=f"R$ {receita_atual:,.0f}",
-            delta=f"{delta_receita:+.1f}%"
+            delta=f"{get_delta(receita_atual, receita_anterior):+.1f}%"
         )
 
-    # Ticket Médio
-    with col4:
-        ticket_atual = volume_atual / ops_atual if ops_atual > 0 else 0
-        volume_anterior = df_previous['total_bruto_duplicata'].sum() if 'total_bruto_duplicata' in df_previous.columns else 0
-        ops_anterior = df_previous['quantidade_operacoes'].sum() if 'quantidade_operacoes' in df_previous.columns else 0
-        ticket_anterior = volume_anterior / ops_anterior if ops_anterior > 0 else 0
-        delta_ticket = ((ticket_atual - ticket_anterior) / ticket_anterior * 100) if ticket_anterior > 0 else 0
+    st.markdown("<div style='margin-bottom: 1rem;'></div>", unsafe_allow_html=True)
 
+    # Linha 2 de KPIs
+    kpi7, kpi8, kpi9, kpi10, kpi11 = st.columns(5)
+
+    with kpi7:
+        st.metric(
+            label="Volume Total (VOP $)",
+            value=f"R$ {volume_atual:,.0f}",
+            delta=f"{get_delta(volume_atual, volume_anterior):+.1f}%"
+        )
+    with kpi8:
         st.metric(
             label="Ticket Médio",
             value=f"R$ {ticket_atual:,.0f}",
-            delta=f"{delta_ticket:+.1f}%"
+            delta=f"{get_delta(ticket_atual, (volume_anterior / ops_anterior if ops_anterior > 0 else 0)):+.1f}%"
         )
-
-    # Margem Cashforce
-    with col5:
-        margem_atual = (receita_atual / volume_atual * 100) if volume_atual > 0 else 0
-        volume_anterior = df_previous['total_bruto_duplicata'].sum() if 'total_bruto_duplicata' in df_previous.columns else 0
-        receita_anterior = df_previous['total_receita_cashforce'].sum() if 'total_receita_cashforce' in df_previous.columns else 0
-        margem_anterior = (receita_anterior / volume_anterior * 100) if volume_anterior > 0 else 0
-        delta_margem = margem_atual - margem_anterior
-
+    with kpi9:
         st.metric(
             label="Margem %",
             value=f"{margem_atual:.2f}%",
-            delta=f"{delta_margem:+.2f}pp"
+            delta=f"{(margem_atual - (receita_anterior / volume_anterior * 100 if volume_anterior > 0 else 0)):+.2f}pp"
+        )
+    with kpi10:
+        st.metric(
+            label="Taxa Efetiva Média",
+            value=f"{taxa_media_atual:.2f}%",
+            delta=f"{(taxa_media_atual - taxa_media_anterior):+.2f}pp",
+            delta_color="inverse"
+        )
+    with kpi11:
+        st.metric(
+            label="Prazo Médio",
+            value=f"{prazo_medio_atual:.2f} dias",
+            delta=f"{(prazo_medio_atual - prazo_medio_anterior):+.1f} dias",
+            delta_color="inverse"
         )
 
     st.markdown("---")
@@ -1017,22 +1053,18 @@ with tab3:
 # ==================== TAB 4: OPERACIONAL ====================
 with tab4:
     st.markdown("### Análise Operacional")
+    st.info("Esta aba agora exibe dados agregados da view `propostas_resumo_mensal`.")
 
-    st.info("⚠️ Esta aba requer dados detalhados da tabela `propostas`. Como o dashboard agora usa a view agregada `propostas_resumo_mensal`, algumas análises operacionais não estão disponíveis.")
-
-    col1, col2, col3 = st.columns(3)
+    col1, col2, col3, col4 = st.columns(4)
 
     with col1:
-        total_ops = df_filtered['quantidade_operacoes'].sum() if 'quantidade_operacoes' in df_filtered.columns else 0
-        st.metric("Total de Operações", f"{int(total_ops):,}")
-
+        st.metric("Total de Operações", f"{int(ops_atual):,}")
     with col2:
-        total_volume = df_filtered['total_bruto_duplicata'].sum() if 'total_bruto_duplicata' in df_filtered.columns else 0
-        st.metric("Volume Total", f"R$ {total_volume:,.0f}")
-
+        st.metric("Total #NF Transportadas", f"{int(total_nf):,}")
     with col3:
-        ticket_medio = total_volume / total_ops if total_ops > 0 else 0
-        st.metric("Ticket Médio", f"R$ {ticket_medio:,.0f}")
+        st.metric("Total #Sacados", f"{int(total_sacados):,}")
+    with col4:
+        st.metric("Total #Fornecedores", f"{int(total_fornecedores):,}")
 
     st.markdown("---")
 
