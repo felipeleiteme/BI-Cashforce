@@ -369,8 +369,9 @@ if 'competencia' in df.columns:
     min_date = df['competencia'].min().date() if not pd.isna(df['competencia'].min()) else datetime.now().date() - timedelta(days=365)
     max_competencia = df['competencia'].max()
     if not pd.isna(max_competencia):
-        next_month = max_competencia + pd.DateOffset(months=1)
-        max_date = (next_month - timedelta(days=1)).date()
+        # Usar o último dia do mês da última competência (sem adicionar mês extra)
+        # Exemplo: se max_competencia é 2025-07-01, max_date será 2025-07-31
+        max_date = (max_competencia + pd.offsets.MonthEnd(0)).date()
     else:
         max_date = datetime.now().date()
     default_start = max(min_date, max_date - timedelta(days=90))
