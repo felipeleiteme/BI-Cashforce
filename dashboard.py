@@ -83,14 +83,14 @@ st.markdown("""
     /* Header styling */
     .main-header {
         background: #ffffff;
-        padding: 1.5rem 0;
+        padding: 1.5rem 0 0.5rem 0;
         border-bottom: 1px solid var(--border);
-        margin-bottom: 2rem;
+        margin-bottom: 1rem;
     }
 
     .main-header h1 {
         margin: 0;
-        font-size: 1.5rem;
+        font-size: 1.75rem;
         font-weight: var(--font-weight-medium);
         color: var(--primary);
         line-height: 1.5;
@@ -101,6 +101,29 @@ st.markdown("""
         font-size: 0.875rem;
         color: var(--slate-500);
         font-weight: var(--font-weight-normal);
+    }
+
+    /* Date input styling */
+    [data-testid="stDateInput"] {
+        background: white;
+    }
+
+    [data-testid="stDateInput"] label {
+        font-size: 0.875rem;
+        font-weight: var(--font-weight-medium);
+        color: var(--slate-700);
+    }
+
+    /* Checkbox styling */
+    [data-testid="stCheckbox"] label {
+        font-size: 0.875rem;
+        font-weight: var(--font-weight-medium);
+        color: var(--slate-700);
+    }
+
+    /* Header controls container */
+    [data-testid="column"] > div {
+        gap: 0.5rem;
     }
 
     /* Sidebar styling */
@@ -337,120 +360,119 @@ if df.empty:
     st.error(" Nenhum dado disponível. Verifique a conexão com o Supabase.")
     st.stop()
 
-# ==================== SIDEBAR - FILTROS ====================
-st.sidebar.header("Filtros Principais")
-
-# FILTRO PRINCIPAL: PARCEIRO (em destaque)
-st.sidebar.markdown("### Parceiro (Principal)")
-# Buscar TODOS os parceiros disponíveis (sem filtros de data)
-parceiros_all = sorted(df['parceiro'].dropna().unique().tolist()) if 'parceiro' in df.columns else []
-selected_parceiros = st.sidebar.multiselect(
-    "Selecione os Parceiros",
-    options=parceiros_all,
-    default=parceiros_all,  # Todos selecionados por padrão
-    help="Filtro principal para análise por parceiro"
-)
-
-# Mostrar informações dos parceiros selecionados
-if selected_parceiros:
-    st.sidebar.info(f" {len(selected_parceiros)} parceiro(s) selecionado(s): {', '.join(selected_parceiros)}")
-else:
-    st.sidebar.warning(" Nenhum parceiro selecionado")
-
-st.sidebar.markdown("---")
-st.sidebar.markdown("### Filtros Secundários")
-
-# Filtro de Período
+# ==================== CALCULAR DATES DISPONÍVEIS ====================
 if 'competencia' in df.columns:
     min_date = df['competencia'].min().date() if not pd.isna(df['competencia'].min()) else datetime.now().date() - timedelta(days=365)
-
-    # max_date deve ser o ÚLTIMO DIA DO MÊS da competência máxima, não o primeiro
     max_competencia = df['competencia'].max()
     if not pd.isna(max_competencia):
-        # Ir para o próximo mês e voltar 1 dia para pegar o último dia do mês atual
         next_month = max_competencia + pd.DateOffset(months=1)
         max_date = (next_month - timedelta(days=1)).date()
     else:
         max_date = datetime.now().date()
-
-    # Período padrão: últimos 3 meses (mas garantindo que não ultrapasse max_date)
     default_start = max(min_date, max_date - timedelta(days=90))
-
-    # IMPORTANTE: Streamlit só aceita tuplas se ambas as datas estiverem dentro do range
-    # Usar key única para forçar recriação do widget quando os dados mudarem
-    date_range = st.sidebar.date_input(
-        "Período",
-        value=(default_start, max_date),
-        min_value=min_date,
-        max_value=max_date,
-        key=f"date_range_{min_date}_{max_date}"
-    )
-
-    if isinstance(date_range, tuple) and len(date_range) == 2:
-        start_date, end_date = date_range
-    else:
-        start_date = end_date = date_range if not isinstance(date_range, tuple) else date_range[0]
 else:
-    start_date = datetime.now().date() - timedelta(days=365)
-    end_date = datetime.now().date()
+    min_date = datetime.now().date() - timedelta(days=365)
+    max_date = datetime.now().date()
+    default_start = max_date - timedelta(days=90)
 
-# ==================== COMPARAÇÃO DE PERÍODOS ====================
-st.sidebar.markdown("---")
-st.sidebar.markdown("""
-    <div style='border-left: 3px solid var(--teal-600); padding-left: 1rem; margin-bottom: 1rem;'>
-        <h4 style='margin: 0 0 0.25rem 0; font-size: 0.875rem; font-weight: 600; color: var(--slate-900);'>
-            Comparação de Períodos
-        </h4>
-        <p style='margin: 0; font-size: 0.75rem; color: var(--slate-500);'>
-            Compare dois períodos diferentes
-        </p>
-    </div>
-""", unsafe_allow_html=True)
+# ==================== HEADER COM FILTROS ====================
+# Título e linha de controles
+title_col, controls_col = st.columns([2, 3])
 
-enable_comparison = st.sidebar.checkbox("Ativar comparação", value=False)
+with title_col:
+    st.markdown("""
+        <div style='padding: 1rem 0;'>
+            <h1 style='margin: 0; font-size: 1.75rem; font-weight: 500; color: var(--primary);'>
+                Dashboard Executivo BI Cashforce
+            </h1>
+        </div>
+    """, unsafe_allow_html=True)
 
-if enable_comparison:
-    st.sidebar.info("📊 Modo comparação ativo", icon="ℹ️")
+with controls_col:
+    # Linha de filtros
+    filter_col1, filter_col2, filter_col3 = st.columns([2, 1.5, 2])
 
-    if 'competencia' in df.columns:
-        # Período de comparação com mesmo range de datas disponíveis
-        date_range_comp = st.sidebar.date_input(
-            "Período de Comparação",
-            value=(min_date, min_date + timedelta(days=90)),
+    with filter_col1:
+        date_range = st.date_input(
+            "📅 Período Principal",
+            value=(default_start, max_date),
             min_value=min_date,
             max_value=max_date,
-            key=f"date_range_comp_{min_date}_{max_date}"
+            key=f"date_range_{min_date}_{max_date}"
         )
-
-        if isinstance(date_range_comp, tuple) and len(date_range_comp) == 2:
-            start_date_comp, end_date_comp = date_range_comp
+        if isinstance(date_range, tuple) and len(date_range) == 2:
+            start_date, end_date = date_range
         else:
-            start_date_comp = end_date_comp = date_range_comp if not isinstance(date_range_comp, tuple) else date_range_comp[0]
-    else:
-        start_date_comp = datetime.now().date() - timedelta(days=730)
-        end_date_comp = datetime.now().date() - timedelta(days=365)
-else:
-    start_date_comp = None
-    end_date_comp = None
+            start_date = end_date = date_range if not isinstance(date_range, tuple) else date_range[0]
 
-# ==================== HEADER (após definição dos filtros) ====================
-col_logo, col_title = st.columns([1, 4])
+    with filter_col2:
+        st.markdown("<div style='height: 8px;'></div>", unsafe_allow_html=True)
+        enable_comparison = st.checkbox("🔄 Comparar", value=False)
 
-with col_logo:
-    pass
+    with filter_col3:
+        if enable_comparison:
+            date_range_comp = st.date_input(
+                "📊 Período 2",
+                value=(min_date, min_date + timedelta(days=90)),
+                min_value=min_date,
+                max_value=max_date,
+                key=f"date_range_comp_{min_date}_{max_date}"
+            )
+            if isinstance(date_range_comp, tuple) and len(date_range_comp) == 2:
+                start_date_comp, end_date_comp = date_range_comp
+            else:
+                start_date_comp = end_date_comp = date_range_comp if not isinstance(date_range_comp, tuple) else date_range_comp[0]
+        else:
+            start_date_comp = None
+            end_date_comp = None
 
-with col_title:
+# Linha de informação
+st.markdown("<div style='border-top: 1px solid var(--border); padding-top: 0.75rem; margin-top: 0.5rem;'></div>", unsafe_allow_html=True)
+
+info_col1, info_col2 = st.columns([4, 1])
+with info_col1:
     if enable_comparison and start_date_comp:
-        periodo_texto = f"<strong>Período 1:</strong> {start_date.strftime('%d/%m/%Y')} - {end_date.strftime('%d/%m/%Y')} | <strong>Período 2:</strong> {start_date_comp.strftime('%d/%m/%Y')} - {end_date_comp.strftime('%d/%m/%Y')}"
+        st.markdown(f"""
+            <p style='font-size: 0.875rem; color: var(--slate-600); margin: 0;'>
+                <span style='color: var(--teal-700); font-weight: 500;'>Período 1:</span> {start_date.strftime('%d/%m/%Y')} - {end_date.strftime('%d/%m/%Y')}
+                <span style='margin: 0 0.5rem; color: var(--slate-400);'>|</span>
+                <span style='color: var(--emerald-700); font-weight: 500;'>Período 2:</span> {start_date_comp.strftime('%d/%m/%Y')} - {end_date_comp.strftime('%d/%m/%Y')}
+            </p>
+        """, unsafe_allow_html=True)
     else:
-        periodo_texto = f"<strong>Período:</strong> {start_date.strftime('%d/%m/%Y')} - {end_date.strftime('%d/%m/%Y')}"
+        st.markdown(f"""
+            <p style='font-size: 0.875rem; color: var(--slate-600); margin: 0;'>
+                <span style='font-weight: 500;'>Período:</span> {start_date.strftime('%d/%m/%Y')} - {end_date.strftime('%d/%m/%Y')}
+            </p>
+        """, unsafe_allow_html=True)
 
+with info_col2:
     st.markdown(f"""
-    <div class="main-header">
-        <h1>Dashboard Executivo BI Cashforce</h1>
-        <p>Inteligência de Negócios | {periodo_texto} | Última atualização: {datetime.now().strftime('%d/%m/%Y às %H:%M')}</p>
-    </div>
+        <p style='font-size: 0.75rem; color: var(--slate-500); text-align: right; margin: 0;'>
+            ⏱️ {datetime.now().strftime('%d/%m/%Y %H:%M')}
+        </p>
     """, unsafe_allow_html=True)
+
+st.markdown("<div style='margin-bottom: 1.5rem;'></div>", unsafe_allow_html=True)
+
+# ==================== SIDEBAR - FILTROS ====================
+st.sidebar.header("Filtros")
+
+# FILTRO PRINCIPAL: PARCEIRO
+st.sidebar.markdown("### Parceiros")
+parceiros_all = sorted(df['parceiro'].dropna().unique().tolist()) if 'parceiro' in df.columns else []
+selected_parceiros = st.sidebar.multiselect(
+    "Selecione os Parceiros",
+    options=parceiros_all,
+    default=parceiros_all,
+    help="Filtro principal para análise por parceiro",
+    label_visibility="collapsed"
+)
+
+if selected_parceiros:
+    st.sidebar.caption(f"✓ {len(selected_parceiros)} parceiro(s) selecionado(s)")
+else:
+    st.sidebar.warning("Nenhum parceiro selecionado")
 
 # Filtro de Grupo Econômico (não existe na view, remover)
 # grupos_economicos = sorted(df['grupo_economico'].dropna().unique().tolist()) if 'grupo_economico' in df.columns else []
