@@ -341,13 +341,29 @@ def get_supabase_client():
 supabase = get_supabase_client()
 
 # ==================== FUNÇÕES DE CARREGAMENTO DE DADOS ====================
+def _fetch_all_rows(table_name: str, page_size: int = 1000):
+    """Lê todos os registros paginando as respostas do Supabase (limite padrão ~1k)."""
+    rows = []
+    start = 0
+
+    while True:
+        response = supabase.table(table_name).select("*").range(start, start + page_size - 1).execute()
+        batch = response.data or []
+        rows.extend(batch)
+
+        if len(batch) < page_size:
+            break
+
+        start += page_size
+
+    return rows
+
 @st.cache_data(ttl=3600)
 def load_main_data():
     """Carrega dados da VIEW CONSOLIDADA propostas_resumo_mensal (fonte única de verdade)"""
     try:
-        # USA A VIEW PRÉ-AGREGADA, NÃO A TABELA BRUTA (consistente com GPT + 1000x mais rápido)
-        response = supabase.table("propostas_resumo_mensal").select("*").execute()
-        df = pd.DataFrame(response.data)
+        # Pagina os resultados porque a API do Supabase limita respostas a 1000 registros
+        df = pd.DataFrame(_fetch_all_rows("propostas_resumo_mensal"))
 
         if not df.empty:
             # Converter competencia (formato YYYY-MM) para datetime
