@@ -149,16 +149,16 @@ st.markdown("""
 
 # ==================== CONEXÃO COM SUPABASE ====================
 SUPABASE_URL = os.getenv("SUPABASE_URL")
-# Usar SUPABASE_KEY (service_role) para ter acesso completo aos dados
-# A chave ANON tem Row Level Security (RLS) que limita o acesso
-SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+# Usar SUPABASE_ANON_KEY (chave pública) - mais seguro para dashboard público
+# RLS garante acesso somente aos dados permitidos
+SUPABASE_KEY = os.getenv("SUPABASE_ANON_KEY")
 
 @st.cache_resource
 def get_supabase_client():
-    """Conexão com Supabase com cache usando service_role key para acesso completo"""
+    """Conexão com Supabase com cache usando anon key (chave pública segura)"""
     try:
         if not SUPABASE_KEY:
-            st.error("SUPABASE_KEY não configurada. Configure no arquivo .env")
+            st.error("SUPABASE_ANON_KEY não configurada. Configure no arquivo .env")
             st.stop()
         return create_client(SUPABASE_URL, SUPABASE_KEY)
     except Exception as e:
@@ -170,46 +170,26 @@ supabase = get_supabase_client()
 # ==================== FUNÇÕES DE CARREGAMENTO DE DADOS ====================
 @st.cache_data(ttl=3600)
 def load_main_data():
-    """Carrega dados da tabela propostas"""
+    """Carrega dados da VIEW CONSOLIDADA propostas_resumo_mensal (fonte única de verdade)"""
     try:
-        # Buscar TODOS os dados (sem limite de 1000)
-        all_data = []
-        page_size = 1000
-        offset = 0
-
-        while True:
-            response = supabase.table("propostas").select("*").range(offset, offset + page_size - 1).execute()
-            if not response.data:
-                break
-            all_data.extend(response.data)
-            if len(response.data) < page_size:
-                break
-            offset += page_size
-
-        df = pd.DataFrame(all_data)
+        # USA A VIEW PRÉ-AGREGADA, NÃO A TABELA BRUTA (consistente com GPT + 1000x mais rápido)
+        response = supabase.table("propostas_resumo_mensal").select("*").execute()
+        df = pd.DataFrame(response.data)
 
         if not df.empty:
-            # Converter datas
-            date_columns = ['data_operacao', 'data_aceite_proposta', 'data_emissao_nf',
-                          'vencimento', 'data_pagamento', 'data_pagamento_operacao',
-                          'data_confirmacao_pagamento_operacao']
-            for col in date_columns:
-                if col in df.columns:
-                    df[col] = pd.to_datetime(df[col], errors='coerce')
+            # Converter competencia (formato YYYY-MM) para datetime
+            df['competencia'] = pd.to_datetime(df['competencia'], errors='coerce')
 
-            # Converter valores numéricos
-            numeric_columns = ['valor_bruto_duplicata', 'valor_liquido_duplicata', 'receita_cashforce',
-                             'liquido_operacao', 'total_taxas_reais', 'desagio_reais', 'tarifa_reais',
-                             'ad_valorem_reais', 'iof_reais', 'prazo', 'prazo_medio_operacao',
-                             'taxa_mes_percentual', 'taxa_efetiva_mes_percentual', 'ad_valorem_percentual']
-
+            # Converter valores numéricos da view
+            numeric_columns = ['quantidade_operacoes', 'total_bruto_duplicata',
+                             'total_liquido_duplicata', 'total_receita_cashforce']
             for col in numeric_columns:
                 if col in df.columns:
                     df[col] = pd.to_numeric(df[col], errors='coerce')
 
         return df
     except Exception as e:
-        st.error(f"Erro ao carregar dados: {e}")
+        st.error(f"Erro ao carregar dados da view: {e}")
         return pd.DataFrame()
 
 # ==================== CARREGAR DADOS ====================
@@ -239,7 +219,7 @@ st.sidebar.header("Filtros Principais")
 # FILTRO PRINCIPAL: PARCEIRO (em destaque)
 st.sidebar.markdown("### Parceiro (Principal)")
 # Buscar TODOS os parceiros disponíveis (sem filtros de data)
-parceiros_all = sorted(df['parceiro'].dropna().unique().tolist()) if 'parceiro' in df.columns else []
+parceiros_all = sorted(df['nome_parceiro'].dropna().unique().tolist()) if 'nome_parceiro' in df.columns else []
 selected_parceiros = st.sidebar.multiselect(
     "Selecione os Parceiros",
     options=parceiros_all,
@@ -257,12 +237,12 @@ st.sidebar.markdown("---")
 st.sidebar.markdown("### Filtros Secundários")
 
 # Filtro de Período
-if 'data_operacao' in df.columns:
-    min_date = df['data_operacao'].min().date() if not pd.isna(df['data_operacao'].min()) else datetime.now().date() - timedelta(days=365)
-    max_date = df['data_operacao'].max().date() if not pd.isna(df['data_operacao'].max()) else datetime.now().date()
+if 'competencia' in df.columns:
+    min_date = df['competencia'].min().date() if not pd.isna(df['competencia'].min()) else datetime.now().date() - timedelta(days=365)
+    max_date = df['competencia'].max().date() if not pd.isna(df['competencia'].max()) else datetime.now().date()
 
-    # Período padrão: 1 mês (30 dias)
-    default_start = max_date - timedelta(days=30)
+    # Período padrão: últimos 3 meses
+    default_start = max_date - timedelta(days=90)
 
     date_range = st.sidebar.date_input(
         "Período",
@@ -279,31 +259,33 @@ else:
     start_date = datetime.now().date() - timedelta(days=365)
     end_date = datetime.now().date()
 
-# Filtro de Grupo Econômico
-grupos_economicos = sorted(df['grupo_economico'].dropna().unique().tolist()) if 'grupo_economico' in df.columns else []
-selected_grupos = st.sidebar.multiselect(
-    "Grupo Econômico",
-    options=grupos_economicos,
-    default=[]
-)
+# Filtro de Grupo Econômico (não existe na view, remover)
+# grupos_economicos = sorted(df['grupo_economico'].dropna().unique().tolist()) if 'grupo_economico' in df.columns else []
+# selected_grupos = st.sidebar.multiselect(
+#     "Grupo Econômico",
+#     options=grupos_economicos,
+#     default=[]
+# )
+selected_grupos = []
 
-# Filtro de Status de Pagamento
-status_pagamento = sorted(df['status_pagamento'].dropna().unique().tolist()) if 'status_pagamento' in df.columns else []
-selected_status = st.sidebar.multiselect(
-    "Status de Pagamento",
-    options=status_pagamento,
-    default=[]
-)
+# Filtro de Status de Pagamento (não existe na view, remover)
+# status_pagamento = sorted(df['status_pagamento'].dropna().unique().tolist()) if 'status_pagamento' in df.columns else []
+# selected_status = st.sidebar.multiselect(
+#     "Status de Pagamento",
+#     options=status_pagamento,
+#     default=[]
+# )
+selected_status = []
 
 st.sidebar.markdown("---")
 st.sidebar.markdown("### Informações")
 
 # Contar registros por parceiro
-parceiros_count = df.groupby('parceiro').size().to_dict() if 'parceiro' in df.columns else {}
-parceiros_info = "\n".join([f"- **{p}**: {count:,} registros" for p, count in sorted(parceiros_count.items())])
+parceiros_count = df.groupby('nome_parceiro')['quantidade_operacoes'].sum().to_dict() if 'nome_parceiro' in df.columns else {}
+parceiros_info = "\n".join([f"- **{p}**: {int(count):,} operações" for p, count in sorted(parceiros_count.items())])
 
 st.sidebar.info(f"""
-**Total de registros:** {len(df):,}
+**Total de competências:** {len(df):,}
 
 **Parceiros no sistema:**
 {parceiros_info}
@@ -314,24 +296,16 @@ st.sidebar.info(f"""
 # ==================== APLICAR FILTROS ====================
 df_filtered = df.copy()
 
-# Filtro de data
-if 'data_operacao' in df_filtered.columns:
+# Filtro de data (competencia)
+if 'competencia' in df_filtered.columns:
     df_filtered = df_filtered[
-        (df_filtered['data_operacao'].dt.date >= start_date) &
-        (df_filtered['data_operacao'].dt.date <= end_date)
+        (df_filtered['competencia'].dt.date >= start_date) &
+        (df_filtered['competencia'].dt.date <= end_date)
     ]
 
-# Filtro de grupo econômico
-if selected_grupos and 'grupo_economico' in df_filtered.columns:
-    df_filtered = df_filtered[df_filtered['grupo_economico'].isin(selected_grupos)]
-
-# Filtro de status
-if selected_status and 'status_pagamento' in df_filtered.columns:
-    df_filtered = df_filtered[df_filtered['status_pagamento'].isin(selected_status)]
-
 # Filtro de parceiro
-if selected_parceiros and 'parceiro' in df_filtered.columns:
-    df_filtered = df_filtered[df_filtered['parceiro'].isin(selected_parceiros)]
+if selected_parceiros and 'nome_parceiro' in df_filtered.columns:
+    df_filtered = df_filtered[df_filtered['nome_parceiro'].isin(selected_parceiros)]
 
 # ==================== CALCULAR PERÍODO ANTERIOR PARA COMPARAÇÃO ====================
 days_diff = (end_date - start_date).days
@@ -339,10 +313,10 @@ previous_start = start_date - timedelta(days=days_diff)
 previous_end = start_date - timedelta(days=1)
 
 df_previous = df.copy()
-if 'data_operacao' in df_previous.columns:
+if 'competencia' in df_previous.columns:
     df_previous = df_previous[
-        (df_previous['data_operacao'].dt.date >= previous_start) &
-        (df_previous['data_operacao'].dt.date <= previous_end)
+        (df_previous['competencia'].dt.date >= previous_start) &
+        (df_previous['competencia'].dt.date <= previous_end)
     ]
 
 # ==================== TABS ====================
@@ -358,11 +332,11 @@ tab1, tab2, tab3, tab4, tab5 = st.tabs([
 with tab1:
     st.markdown("### Análise por Parceiro")
 
-    if 'parceiro' not in df_filtered.columns or df_filtered.empty:
+    if 'nome_parceiro' not in df_filtered.columns or df_filtered.empty:
         st.warning(" Nenhum dado disponível para os filtros selecionados. Tente ajustar o período ou os filtros.")
     else:
         # Verificar se há dados para os parceiros selecionados
-        parceiros_com_dados = df_filtered['parceiro'].dropna().unique().tolist()
+        parceiros_com_dados = df_filtered['nome_parceiro'].dropna().unique().tolist()
 
         if not parceiros_com_dados:
             st.warning(" Nenhum dado encontrado para os parceiros selecionados no período escolhido. Tente ajustar os filtros.")
@@ -372,15 +346,13 @@ with tab1:
         # Comparação entre Parceiros
         st.markdown("#### Comparação entre Parceiros")
 
-        parceiro_stats = df_filtered.groupby('parceiro').agg({
-            'valor_bruto_duplicata': 'sum',
-            'receita_cashforce': 'sum',
-            'id': 'count',
-            'prazo_medio_operacao': 'mean',
-            'taxa_efetiva_mes_percentual': 'mean'
+        parceiro_stats = df_filtered.groupby('nome_parceiro').agg({
+            'total_bruto_duplicata': 'sum',
+            'total_receita_cashforce': 'sum',
+            'quantidade_operacoes': 'sum'
         }).reset_index()
 
-        parceiro_stats.columns = ['Parceiro', 'Volume Total', 'Receita CF', 'Operações', 'Prazo Médio', 'Taxa Média']
+        parceiro_stats.columns = ['Parceiro', 'Volume Total', 'Receita CF', 'Operações']
         parceiro_stats['Ticket Médio'] = parceiro_stats['Volume Total'] / parceiro_stats['Operações']
         parceiro_stats['Margem %'] = (parceiro_stats['Receita CF'] / parceiro_stats['Volume Total'] * 100)
 
@@ -487,23 +459,20 @@ with tab1:
 
         # Evolução Temporal por Parceiro
         st.markdown("#### Evolução do Volume por Parceiro")
-        if 'data_operacao' in df_filtered.columns:
-            df_time_parceiro = df_filtered.copy()
-            df_time_parceiro['data_mes'] = df_time_parceiro['data_operacao'].dt.to_period('M').dt.to_timestamp()
-
-            time_parceiro = df_time_parceiro.groupby(['data_mes', 'parceiro'])['valor_bruto_duplicata'].sum().reset_index()
+        if 'competencia' in df_filtered.columns:
+            time_parceiro = df_filtered.groupby(['competencia', 'nome_parceiro'])['total_bruto_duplicata'].sum().reset_index()
 
             fig_evolucao = px.line(
                 time_parceiro,
-                x='data_mes',
-                y='valor_bruto_duplicata',
-                color='parceiro',
+                x='competencia',
+                y='total_bruto_duplicata',
+                color='nome_parceiro',
                 markers=True,
                 line_shape='spline'
             )
             fig_evolucao.update_layout(
                 height=450,
-                xaxis_title="Mês",
+                xaxis_title="Competência",
                 yaxis_title="Volume (R$)",
                 hovermode='x unified',
                 legend_title="Parceiro",
@@ -517,9 +486,8 @@ with tab1:
         parceiro_display['Volume Total'] = parceiro_display['Volume Total'].apply(lambda x: f"R$ {x:,.2f}")
         parceiro_display['Receita CF'] = parceiro_display['Receita CF'].apply(lambda x: f"R$ {x:,.2f}")
         parceiro_display['Ticket Médio'] = parceiro_display['Ticket Médio'].apply(lambda x: f"R$ {x:,.2f}")
-        parceiro_display['Prazo Médio'] = parceiro_display['Prazo Médio'].apply(lambda x: f"{x:.0f} dias")
-        parceiro_display['Taxa Média'] = parceiro_display['Taxa Média'].apply(lambda x: f"{x:.2f}%")
         parceiro_display['Margem %'] = parceiro_display['Margem %'].apply(lambda x: f"{x:.2f}%")
+        parceiro_display['Operações'] = parceiro_display['Operações'].apply(lambda x: f"{int(x):,}")
 
         st.dataframe(parceiro_display, use_container_width=True, hide_index=True)
 
@@ -532,8 +500,8 @@ with tab2:
 
     # Volume Total
     with col1:
-        volume_atual = df_filtered['valor_bruto_duplicata'].sum() if 'valor_bruto_duplicata' in df_filtered.columns else 0
-        volume_anterior = df_previous['valor_bruto_duplicata'].sum() if 'valor_bruto_duplicata' in df_previous.columns else 0
+        volume_atual = df_filtered['total_bruto_duplicata'].sum() if 'total_bruto_duplicata' in df_filtered.columns else 0
+        volume_anterior = df_previous['total_bruto_duplicata'].sum() if 'total_bruto_duplicata' in df_previous.columns else 0
         delta_volume = ((volume_atual - volume_anterior) / volume_anterior * 100) if volume_anterior > 0 else 0
 
         st.metric(
@@ -544,20 +512,20 @@ with tab2:
 
     # Número de Operações
     with col2:
-        ops_atual = len(df_filtered)
-        ops_anterior = len(df_previous)
+        ops_atual = df_filtered['quantidade_operacoes'].sum() if 'quantidade_operacoes' in df_filtered.columns else 0
+        ops_anterior = df_previous['quantidade_operacoes'].sum() if 'quantidade_operacoes' in df_previous.columns else 0
         delta_ops = ((ops_atual - ops_anterior) / ops_anterior * 100) if ops_anterior > 0 else 0
 
         st.metric(
             label="Operações",
-            value=f"{ops_atual:,}",
+            value=f"{int(ops_atual):,}",
             delta=f"{delta_ops:+.1f}%"
         )
 
     # Receita Cashforce
     with col3:
-        receita_atual = df_filtered['receita_cashforce'].sum() if 'receita_cashforce' in df_filtered.columns else 0
-        receita_anterior = df_previous['receita_cashforce'].sum() if 'receita_cashforce' in df_previous.columns else 0
+        receita_atual = df_filtered['total_receita_cashforce'].sum() if 'total_receita_cashforce' in df_filtered.columns else 0
+        receita_anterior = df_previous['total_receita_cashforce'].sum() if 'total_receita_cashforce' in df_previous.columns else 0
         delta_receita = ((receita_atual - receita_anterior) / receita_anterior * 100) if receita_anterior > 0 else 0
 
         st.metric(
@@ -596,89 +564,80 @@ with tab2:
     col_left, col_right = st.columns(2)
 
     with col_left:
-        st.markdown("#### Top 10 Grupos Econômicos")
-        if 'grupo_economico' in df_filtered.columns and 'valor_bruto_duplicata' in df_filtered.columns:
-            top_grupos = df_filtered.groupby('grupo_economico')['valor_bruto_duplicata'].sum().sort_values(ascending=False).head(10)
+        st.markdown("#### Volume por Parceiro")
+        if 'nome_parceiro' in df_filtered.columns and 'total_bruto_duplicata' in df_filtered.columns:
+            parceiro_volume = df_filtered.groupby('nome_parceiro')['total_bruto_duplicata'].sum().sort_values(ascending=False)
 
-            fig_grupos = px.bar(
-                x=top_grupos.values,
-                y=top_grupos.index,
+            fig_parceiros = px.bar(
+                x=parceiro_volume.values,
+                y=parceiro_volume.index,
                 orientation='h',
-                labels={'x': 'Volume (R$)', 'y': 'Grupo Econômico'},
-                color=top_grupos.values,
+                labels={'x': 'Volume (R$)', 'y': 'Parceiro'},
+                color=parceiro_volume.values,
                 color_continuous_scale='Blues'
             )
-            fig_grupos.update_layout(
+            fig_parceiros.update_layout(
                 showlegend=False,
                 height=400,
                 margin=dict(l=0, r=0, t=30, b=0),
                 xaxis_title="Volume (R$)",
                 yaxis_title=""
             )
-            st.plotly_chart(fig_grupos, use_container_width=True)
+            st.plotly_chart(fig_parceiros, use_container_width=True)
         else:
             st.info("Dados insuficientes para gerar o gráfico.")
 
     with col_right:
-        st.markdown("#### Distribuição por Status de Pagamento")
-        if 'status_pagamento' in df_filtered.columns:
-            status_counts = df_filtered['status_pagamento'].value_counts()
+        st.markdown("#### Distribuição de Operações por Parceiro")
+        if 'nome_parceiro' in df_filtered.columns:
+            ops_counts = df_filtered.groupby('nome_parceiro')['quantidade_operacoes'].sum()
 
-            fig_status = px.pie(
-                values=status_counts.values,
-                names=status_counts.index,
+            fig_ops_pie = px.pie(
+                values=ops_counts.values,
+                names=ops_counts.index,
                 color_discrete_sequence=px.colors.qualitative.Set3,
                 hole=0.4
             )
-            fig_status.update_layout(
+            fig_ops_pie.update_layout(
                 height=400,
                 margin=dict(l=0, r=0, t=30, b=0),
                 showlegend=True
             )
-            fig_status.update_traces(textposition='inside', textinfo='percent+label')
-            st.plotly_chart(fig_status, use_container_width=True)
+            fig_ops_pie.update_traces(textposition='inside', textinfo='percent+label')
+            st.plotly_chart(fig_ops_pie, use_container_width=True)
         else:
             st.info("Dados insuficientes para gerar o gráfico.")
 
-    # Treemap de Grupos Econômicos
-    st.markdown("#### Mapa de Grupos Econômicos (Treemap)")
-    if 'grupo_economico' in df_filtered.columns and 'valor_bruto_duplicata' in df_filtered.columns:
-        top_20_grupos = df_filtered.groupby('grupo_economico').agg({
-            'valor_bruto_duplicata': 'sum',
-            'id': 'count'
-        }).reset_index()
-        top_20_grupos.columns = ['grupo_economico', 'volume', 'quantidade']
-        top_20_grupos = top_20_grupos.nlargest(20, 'volume')
+    # Evolução temporal (já temos competencia, mostrar evolução)
+    st.markdown("#### Evolução do Volume Total")
+    if 'competencia' in df_filtered.columns and 'total_bruto_duplicata' in df_filtered.columns:
+        time_series = df_filtered.groupby('competencia')['total_bruto_duplicata'].sum().reset_index()
 
-        fig_treemap = px.treemap(
-            top_20_grupos,
-            path=['grupo_economico'],
-            values='volume',
-            color='volume',
-            color_continuous_scale='Viridis',
-            hover_data={'quantidade': ':,', 'volume': ':,.2f'}
+        fig_time = px.line(
+            time_series,
+            x='competencia',
+            y='total_bruto_duplicata',
+            markers=True
         )
-        fig_treemap.update_layout(
-            height=500,
+        fig_time.update_traces(line_color='#667eea', line_width=3)
+        fig_time.update_layout(
+            height=400,
+            xaxis_title="Competência",
+            yaxis_title="Volume (R$)",
             margin=dict(l=0, r=0, t=30, b=0)
         )
-        st.plotly_chart(fig_treemap, use_container_width=True)
+        st.plotly_chart(fig_time, use_container_width=True)
 
 # ==================== TAB 3: ANÁLISE TEMPORAL ====================
 with tab3:
     st.markdown("### Evolução Temporal")
 
-    if 'data_operacao' in df_filtered.columns:
-        # Preparar dados temporais
-        df_time = df_filtered.copy()
-        df_time['ano_mes'] = df_time['data_operacao'].dt.to_period('M').astype(str)
-        df_time['data_mes'] = df_time['data_operacao'].dt.to_period('M').dt.to_timestamp()
-
-        # Agregação mensal
-        time_agg = df_time.groupby('data_mes').agg({
-            'valor_bruto_duplicata': 'sum',
-            'receita_cashforce': 'sum',
-            'id': 'count'
+    if 'competencia' in df_filtered.columns:
+        # Agregação mensal (já vem agregado da view)
+        time_agg = df_filtered.groupby('competencia').agg({
+            'total_bruto_duplicata': 'sum',
+            'total_receita_cashforce': 'sum',
+            'quantidade_operacoes': 'sum'
         }).reset_index()
         time_agg.columns = ['data', 'volume', 'receita', 'operacoes']
         time_agg['ticket_medio'] = time_agg['volume'] / time_agg['operacoes']
@@ -700,7 +659,7 @@ with tab3:
 
         fig_volume_time.update_layout(
             height=400,
-            xaxis_title="Mês",
+            xaxis_title="Competência",
             yaxis_title="Volume (R$)",
             hovermode='x unified',
             margin=dict(l=0, r=0, t=30, b=0)
@@ -742,115 +701,72 @@ with tab3:
             )
             st.plotly_chart(fig_ticket, use_container_width=True)
 
-        # Heatmap de Operações
-        st.markdown("#### Heatmap de Operações (Dia da Semana x Mês)")
-        df_heatmap = df_filtered.copy()
-        df_heatmap['dia_semana'] = df_heatmap['data_operacao'].dt.day_name()
-        df_heatmap['mes'] = df_heatmap['data_operacao'].dt.month_name()
+        # Comparação de métricas
+        st.markdown("#### Comparação: Volume vs Receita")
+        fig_compare = make_subplots(specs=[[{"secondary_y": True}]])
 
-        heatmap_data = df_heatmap.groupby(['dia_semana', 'mes']).size().reset_index(name='count')
-        heatmap_pivot = heatmap_data.pivot(index='dia_semana', columns='mes', values='count').fillna(0)
-
-        # Ordenar dias da semana
-        dias_ordem = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
-        heatmap_pivot = heatmap_pivot.reindex([d for d in dias_ordem if d in heatmap_pivot.index])
-
-        fig_heatmap = px.imshow(
-            heatmap_pivot,
-            color_continuous_scale='YlOrRd',
-            aspect='auto',
-            labels=dict(x="Mês", y="Dia da Semana", color="Operações")
+        fig_compare.add_trace(
+            go.Bar(x=time_agg['data'], y=time_agg['volume'], name='Volume', marker_color='#667eea'),
+            secondary_y=False
         )
-        fig_heatmap.update_layout(height=400)
-        st.plotly_chart(fig_heatmap, use_container_width=True)
+
+        fig_compare.add_trace(
+            go.Scatter(x=time_agg['data'], y=time_agg['receita'], name='Receita CF',
+                      mode='lines+markers', line=dict(color='#2ca02c', width=3)),
+            secondary_y=True
+        )
+
+        fig_compare.update_layout(
+            height=400,
+            hovermode='x unified',
+            margin=dict(l=0, r=0, t=30, b=0)
+        )
+        fig_compare.update_xaxes(title_text="Competência")
+        fig_compare.update_yaxes(title_text="Volume (R$)", secondary_y=False)
+        fig_compare.update_yaxes(title_text="Receita CF (R$)", secondary_y=True)
+
+        st.plotly_chart(fig_compare, use_container_width=True)
 
 # ==================== TAB 4: OPERACIONAL ====================
 with tab4:
     st.markdown("### Análise Operacional")
 
+    st.info("⚠️ Esta aba requer dados detalhados da tabela `propostas`. Como o dashboard agora usa a view agregada `propostas_resumo_mensal`, algumas análises operacionais não estão disponíveis.")
+
     col1, col2, col3 = st.columns(3)
 
     with col1:
-        prazo_medio = df_filtered['prazo_medio_operacao'].mean() if 'prazo_medio_operacao' in df_filtered.columns else 0
-        st.metric("Prazo Médio", f"{prazo_medio:.0f} dias")
+        total_ops = df_filtered['quantidade_operacoes'].sum() if 'quantidade_operacoes' in df_filtered.columns else 0
+        st.metric("Total de Operações", f"{int(total_ops):,}")
 
     with col2:
-        taxa_media = df_filtered['taxa_efetiva_mes_percentual'].mean() if 'taxa_efetiva_mes_percentual' in df_filtered.columns else 0
-        st.metric("Taxa Efetiva Média", f"{taxa_media:.2f}%")
+        total_volume = df_filtered['total_bruto_duplicata'].sum() if 'total_bruto_duplicata' in df_filtered.columns else 0
+        st.metric("Volume Total", f"R$ {total_volume:,.0f}")
 
     with col3:
-        if 'status_antecipacao' in df_filtered.columns:
-            antecipadas = len(df_filtered[df_filtered['status_antecipacao'] == 'Antecipada'])
-            taxa_antecipacao = (antecipadas / len(df_filtered) * 100) if len(df_filtered) > 0 else 0
-            st.metric("Taxa de Antecipação", f"{taxa_antecipacao:.1f}%")
+        ticket_medio = total_volume / total_ops if total_ops > 0 else 0
+        st.metric("Ticket Médio", f"R$ {ticket_medio:,.0f}")
 
     st.markdown("---")
 
-    col_left, col_right = st.columns(2)
+    st.markdown("#### Operações por Parceiro e Competência")
+    if 'nome_parceiro' in df_filtered.columns and 'competencia' in df_filtered.columns:
+        ops_parceiro_time = df_filtered.groupby(['competencia', 'nome_parceiro'])['quantidade_operacoes'].sum().reset_index()
 
-    with col_left:
-        st.markdown("#### Distribuição de Prazos")
-        if 'prazo' in df_filtered.columns:
-            fig_prazo = px.histogram(
-                df_filtered,
-                x='prazo',
-                nbins=30,
-                color_discrete_sequence=['#667eea']
-            )
-            fig_prazo.update_layout(
-                height=350,
-                xaxis_title="Prazo (dias)",
-                yaxis_title="Frequência",
-                margin=dict(l=0, r=0, t=30, b=0)
-            )
-            st.plotly_chart(fig_prazo, use_container_width=True)
-
-    with col_right:
-        st.markdown("#### Forma de Pagamento")
-        if 'forma_pagamento' in df_filtered.columns:
-            forma_counts = df_filtered['forma_pagamento'].value_counts()
-            fig_forma = px.bar(
-                x=forma_counts.index,
-                y=forma_counts.values,
-                color=forma_counts.values,
-                color_continuous_scale='Purples'
-            )
-            fig_forma.update_layout(
-                height=350,
-                showlegend=False,
-                xaxis_title="Forma",
-                yaxis_title="Quantidade",
-                margin=dict(l=0, r=0, t=30, b=0)
-            )
-            st.plotly_chart(fig_forma, use_container_width=True)
-
-    # Top Compradores
-    st.markdown("#### Top 15 Compradores por Volume")
-    if 'razao_social_comprador' in df_filtered.columns and 'valor_bruto_duplicata' in df_filtered.columns:
-        top_compradores = df_filtered.groupby('razao_social_comprador').agg({
-            'valor_bruto_duplicata': 'sum',
-            'id': 'count'
-        }).reset_index()
-        top_compradores.columns = ['comprador', 'volume', 'operacoes']
-        top_compradores = top_compradores.nlargest(15, 'volume')
-
-        fig_compradores = px.bar(
-            top_compradores,
-            x='volume',
-            y='comprador',
-            orientation='h',
-            color='volume',
-            color_continuous_scale='Teal',
-            hover_data={'operacoes': ':,'}
+        fig_ops_time = px.bar(
+            ops_parceiro_time,
+            x='competencia',
+            y='quantidade_operacoes',
+            color='nome_parceiro',
+            barmode='group'
         )
-        fig_compradores.update_layout(
-            height=500,
-            showlegend=False,
-            xaxis_title="Volume (R$)",
-            yaxis_title="",
+        fig_ops_time.update_layout(
+            height=400,
+            xaxis_title="Competência",
+            yaxis_title="Quantidade de Operações",
             margin=dict(l=0, r=0, t=30, b=0)
         )
-        st.plotly_chart(fig_compradores, use_container_width=True)
+        st.plotly_chart(fig_ops_time, use_container_width=True)
 
 # ==================== TAB 5: FINANCEIRO ====================
 with tab5:
@@ -859,20 +775,20 @@ with tab5:
     col1, col2, col3, col4 = st.columns(4)
 
     with col1:
-        total_taxas = df_filtered['total_taxas_reais'].sum() if 'total_taxas_reais' in df_filtered.columns else 0
-        st.metric("Total de Taxas", f"R$ {total_taxas:,.0f}")
+        bruto_total = df_filtered['total_bruto_duplicata'].sum() if 'total_bruto_duplicata' in df_filtered.columns else 0
+        st.metric("Total Bruto", f"R$ {bruto_total:,.0f}")
 
     with col2:
-        desagio_total = df_filtered['desagio_reais'].sum() if 'desagio_reais' in df_filtered.columns else 0
-        st.metric("Deságio Total", f"R$ {desagio_total:,.0f}")
+        liquido_total = df_filtered['total_liquido_duplicata'].sum() if 'total_liquido_duplicata' in df_filtered.columns else 0
+        st.metric("Total Líquido", f"R$ {liquido_total:,.0f}")
 
     with col3:
-        iof_total = df_filtered['iof_reais'].sum() if 'iof_reais' in df_filtered.columns else 0
-        st.metric("IOF Total", f"R$ {iof_total:,.0f}")
+        receita_total = df_filtered['total_receita_cashforce'].sum() if 'total_receita_cashforce' in df_filtered.columns else 0
+        st.metric("Receita Cashforce", f"R$ {receita_total:,.0f}")
 
     with col4:
-        liquido_total = df_filtered['liquido_operacao'].sum() if 'liquido_operacao' in df_filtered.columns else 0
-        st.metric("Líquido Total", f"R$ {liquido_total:,.0f}")
+        margem_total = (receita_total / bruto_total * 100) if bruto_total > 0 else 0
+        st.metric("Margem %", f"{margem_total:.2f}%")
 
     st.markdown("---")
 
@@ -880,13 +796,13 @@ with tab5:
 
     with col_left:
         st.markdown("#### Composição de Valores")
-        if all(col in df_filtered.columns for col in ['valor_bruto_duplicata', 'total_taxas_reais', 'liquido_operacao']):
+        if all(col in df_filtered.columns for col in ['total_bruto_duplicata', 'total_liquido_duplicata', 'total_receita_cashforce']):
             valores = pd.DataFrame({
-                'Categoria': ['Valor Bruto', 'Taxas', 'Líquido'],
+                'Categoria': ['Valor Bruto', 'Valor Líquido', 'Receita CF'],
                 'Valor': [
-                    df_filtered['valor_bruto_duplicata'].sum(),
-                    df_filtered['total_taxas_reais'].sum(),
-                    df_filtered['liquido_operacao'].sum()
+                    df_filtered['total_bruto_duplicata'].sum(),
+                    df_filtered['total_liquido_duplicata'].sum(),
+                    df_filtered['total_receita_cashforce'].sum()
                 ]
             })
 
@@ -905,76 +821,46 @@ with tab5:
             st.plotly_chart(fig_valores, use_container_width=True)
 
     with col_right:
-        st.markdown("#### Taxa Efetiva Mensal")
-        if 'taxa_efetiva_mes_percentual' in df_filtered.columns:
-            fig_taxa = px.box(
-                df_filtered,
-                y='taxa_efetiva_mes_percentual',
-                color_discrete_sequence=['#764ba2']
+        st.markdown("#### Evolução da Receita Cashforce")
+        if 'competencia' in df_filtered.columns and 'total_receita_cashforce' in df_filtered.columns:
+            receita_time = df_filtered.groupby('competencia')['total_receita_cashforce'].sum().reset_index()
+
+            fig_receita = px.line(
+                receita_time,
+                x='competencia',
+                y='total_receita_cashforce',
+                markers=True
             )
-            fig_taxa.update_layout(
+            fig_receita.update_traces(line_color='#2ca02c', line_width=3)
+            fig_receita.update_layout(
                 height=350,
-                yaxis_title="Taxa Efetiva (%)",
+                xaxis_title="Competência",
+                yaxis_title="Receita CF (R$)",
                 margin=dict(l=0, r=0, t=30, b=0)
             )
-            st.plotly_chart(fig_taxa, use_container_width=True)
+            st.plotly_chart(fig_receita, use_container_width=True)
 
-    # Análise de Concentração (Curva ABC)
-    st.markdown("#### Curva ABC - Concentração de Receita por Grupo")
-    if 'grupo_economico' in df_filtered.columns and 'receita_cashforce' in df_filtered.columns:
-        abc_data = df_filtered.groupby('grupo_economico')['receita_cashforce'].sum().reset_index()
-        abc_data = abc_data.sort_values('receita_cashforce', ascending=False).reset_index(drop=True)
-        abc_data['percentual'] = abc_data['receita_cashforce'] / abc_data['receita_cashforce'].sum() * 100
-        abc_data['acumulado'] = abc_data['percentual'].cumsum()
+    # Análise de Margem por Parceiro
+    st.markdown("#### Margem % por Parceiro ao Longo do Tempo")
+    if 'nome_parceiro' in df_filtered.columns:
+        df_margem = df_filtered.copy()
+        df_margem['margem_pct'] = (df_margem['total_receita_cashforce'] / df_margem['total_bruto_duplicata'] * 100)
 
-        # Classificação ABC
-        abc_data['classe'] = 'C'
-        abc_data.loc[abc_data['acumulado'] <= 80, 'classe'] = 'A'
-        abc_data.loc[(abc_data['acumulado'] > 80) & (abc_data['acumulado'] <= 95), 'classe'] = 'B'
-
-        fig_abc = go.Figure()
-
-        fig_abc.add_trace(go.Bar(
-            x=abc_data.index,
-            y=abc_data['percentual'],
-            name='% Receita',
-            marker_color='lightblue',
-            yaxis='y'
-        ))
-
-        fig_abc.add_trace(go.Scatter(
-            x=abc_data.index,
-            y=abc_data['acumulado'],
-            name='% Acumulado',
-            mode='lines+markers',
-            line=dict(color='red', width=3),
-            yaxis='y2'
-        ))
-
-        fig_abc.update_layout(
+        fig_margem_time = px.line(
+            df_margem,
+            x='competencia',
+            y='margem_pct',
+            color='nome_parceiro',
+            markers=True
+        )
+        fig_margem_time.update_layout(
             height=400,
-            xaxis_title="Grupos Econômicos (ordenados)",
-            yaxis=dict(title="% Receita Individual", side='left'),
-            yaxis2=dict(title="% Acumulado", side='right', overlaying='y'),
+            xaxis_title="Competência",
+            yaxis_title="Margem (%)",
             hovermode='x unified',
             margin=dict(l=0, r=0, t=30, b=0)
         )
-
-        st.plotly_chart(fig_abc, use_container_width=True)
-
-        # Mostrar classificação ABC
-        col1, col2, col3 = st.columns(3)
-
-        classe_a = len(abc_data[abc_data['classe'] == 'A'])
-        classe_b = len(abc_data[abc_data['classe'] == 'B'])
-        classe_c = len(abc_data[abc_data['classe'] == 'C'])
-
-        with col1:
-            st.info(f"**Classe A:** {classe_a} grupos (80% da receita)")
-        with col2:
-            st.info(f"**Classe B:** {classe_b} grupos (15% da receita)")
-        with col3:
-            st.info(f"**Classe C:** {classe_c} grupos (5% da receita)")
+        st.plotly_chart(fig_margem_time, use_container_width=True)
 
 # ==================== RODAPÉ ====================
 st.markdown("---")

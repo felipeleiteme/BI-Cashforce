@@ -1,0 +1,9 @@
+dashboard.py
+__pycache__/
+*.pyc
+.env.local.secrets
+venv/
+planilhas/
+docs/
+scripts/
+*.md

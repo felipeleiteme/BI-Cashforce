@@ -1,20 +1,10 @@
 {
   "functions": {
     "api/etl_sync.py": {
-      "maxDuration": 300,
-      "runtime": "python3.9"
+      "maxDuration": 300
     },
     "api/resumo_alert.py": {
-      "maxDuration": 15,
-      "runtime": "python3.9"
-    },
-    "dashboard.py": {
-      "runtime": "python3.9"
+      "maxDuration": 15
     }
-  },
-  "routes": [
-    { "src": "/api/etl-sync", "dest": "/api/etl_sync.py" },
-    { "src": "/api/resumo-alert", "dest": "/api/resumo_alert.py" },
-    { "src": "/", "dest": "/dashboard.py" }
-  ]
+  }
 }

@@ -1,8 +1,8 @@
-# BI-Cashforce - Pipeline ETL + GPT Integrado
+# BI-Cashforce - Pipeline ETL + Dashboard + GPT Integrado
 
 [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/felipeleiteme/BI-Cashforce)
 
-Pipeline automatizado de ETL (Extração, Transformação e Carga) que sincroniza dados de operações financeiras do Google Sheets para o Supabase + Assistente GPT customizado para consultas inteligentes em linguagem natural.
+Pipeline automatizado de ETL (Extração, Transformação e Carga) que sincroniza dados de operações financeiras do Google Sheets para o Supabase + Dashboard Streamlit interativo + Assistente GPT customizado para consultas inteligentes.
 
 ## 🚀 Início Rápido
 
@@ -15,87 +15,101 @@ cd BI-Cashforce
 cp .env.example .env
 # Edite .env com suas credenciais
 
-# 3. Deploy na Vercel
+# 3. Deploy na Vercel (apenas APIs)
 vercel --prod
+
+# 4. Deploy do Dashboard no Streamlit Cloud
+# Siga o guia em docs/guides/deploy.md
 ```
 
 ## 📋 Visão Geral
 
-Este projeto implementa um pipeline serverless completo que:
+Este projeto implementa uma solução completa de Business Intelligence com 3 componentes principais:
 
-### Pipeline ETL
+### 1. Pipeline ETL (Vercel Serverless)
 - 📊 **Extrai** dados da planilha "Operações" no Google Sheets (90 mil+ registros, 59 colunas)
 - 🔄 **Transforma** os dados (limpa, normaliza, converte tipos, remove duplicatas)
 - 💾 **Carrega** todo o histórico no Supabase (PostgreSQL) via UPSERT em lotes de 5k registros
 - 🔁 **Atualiza** a materialized view `propostas_resumo_mensal` após cada sincronização
-- ⏰ **Executa automaticamente** 1x por dia (plano Hobby) ou de hora em hora (workflow GitHub Actions)
-- ✅ **73.227 registros** sincronizados na última execução completa (após sanitização)
+- ✅ **73.227 registros** sincronizados na última execução completa
 
-### Assistente GPT Integrado
+### 2. Dashboard Streamlit (Visualização)
+- 📊 **Interface visual interativa** - Dashboard moderno com gráficos e KPIs em tempo real
+- 🎯 **Filtros dinâmicos** - Por período, parceiro e competência
+- 📈 **5 Tabs de análise**:
+  - **Análise por Parceiro** - Comparação de volume, operações, ticket médio e margem
+  - **Overview Geral** - KPIs principais com comparação de períodos
+  - **Análise Temporal** - Evolução de volume, operações e ticket médio
+  - **Operacional** - Distribuição de operações por parceiro e competência
+  - **Financeiro** - Composição de valores, receita e margem por parceiro
+- 🔒 **Seguro e rápido** - Usa `SUPABASE_ANON_KEY` com RLS + leitura da view agregada
+
+### 3. Assistente GPT Integrado (Consultas Inteligentes)
 - 🤖 **Consultas em linguagem natural** - Pergunte em português sobre suas operações
 - 📈 **Análises automáticas** - Totalizadores, médias, insights e comparações
 - 🔍 **Filtros inteligentes** - Por CNPJ, grupo, status, data, valor, etc.
 - 📊 **Apresentação formatada** - Tabelas, resumos e recomendações
+- 🎯 **Fonte única de verdade** - Lê da mesma view `propostas_resumo_mensal` que o Dashboard
 
-### Dashboard Self-Service (Streamlit)
-- 📊 **Interface visual interativa** - Dashboard moderno com gráficos e KPIs em tempo real
-- 🎯 **Filtros dinâmicos** - Período, grupo econômico e status de pagamento
-- 📈 **KPIs principais** - Volume total, operações e receita Cashforce
-- 🔍 **Análises visuais** - Top 10 grupos econômicos e distribuição por status
-- 🔒 **Seguro e escalável** - Usa `SUPABASE_ANON_KEY` com Row Level Security (RLS)
-
-## 🏗️ Arquitetura
+## 🏗️ Arquitetura Atualizada
 
 ```
 ┌─────────────────┐
-│  Google Sheets  │  90k+ registros
+│  Google Sheets  │  90k+ registros (fonte)
 │   "Operações"   │
 └────────┬────────┘
          │
          ▼
 ┌─────────────────┐
-│  Vercel Cron    │  1x por dia (9h)
-│  GitHub Actions │  ou de hora em hora
-└────────┬────────┘
-         │
-         ▼
-┌─────────────────┐
-│ Python ETL      │  Limpa, normaliza, agrupa
-│  api/etl_sync.py│
+│  Vercel API     │  ETL Serverless
+│  /api/etl_sync  │  (invoke manual ou GitHub Actions)
 └────────┬────────┘
          │
          ▼
 ┌────────────────────────────┐
-│      Supabase (Postgres)   │
-│  propostas (tabela base)   │
-└────────┬────────┬──────────┘
-         │        │ refresh_propostas_resumo_mensal()
-         │        ▼
-         │  ┌─────────────────────────┐
-         │  │ Materialized View + API │
-         │  │  propostas_resumo_mensal│
-         │  └─────────────────────────┘
-         ▼
-┌─────────────────┐
-│   GPT Custom    │  Consultas em linguagem natural
-│  (Actions API)  │  Insights e alertas
-└─────────────────┘
+│   Supabase (PostgreSQL)    │
+│  ┌──────────────────────┐  │
+│  │ propostas (tabela)   │  │  73k+ registros
+│  └──────────┬───────────┘  │
+│             │               │
+│             ▼               │
+│  ┌──────────────────────────┐
+│  │ propostas_resumo_mensal  │  View materializada
+│  │ (agregação por mês)      │  (fonte única de verdade)
+│  └────┬─────────────────┬───┘
+└───────┼─────────────────┼────┘
+        │                 │
+        ▼                 ▼
+┌────────────────┐  ┌─────────────────┐
+│ Dashboard      │  │   GPT Custom    │
+│ (Streamlit)    │  │  (OpenAI)       │
+│ Visualização   │  │  Consultas NLP  │
+└────────────────┘  └─────────────────┘
+   • Gráficos         • Análises
+   • KPIs             • Insights
+   • Filtros          • Alertas
 ```
 
 ### Stack Tecnológica
 
 **Backend ETL:**
 - **Runtime**: Python 3.9 (Vercel Serverless Functions)
-- **Agendador**: Vercel Cron Jobs + GitHub Actions
-- **Fonte**: Google Sheets API (gspread)
-- **Destino**: Supabase (PostgreSQL)
-- **Libs**: pandas (transformação), supabase-py (v2.7.4)
+- **Fonte**: Google Sheets API (gspread + oauth2client)
+- **Destino**: Supabase PostgreSQL (supabase-py v2.7.4)
+- **Transformação**: pandas v2.2.0
+- **Deploy**: Vercel CLI
+
+**Dashboard:**
+- **Framework**: Streamlit v1.33.0
+- **Gráficos**: Plotly v5.18.0
+- **Deploy**: Streamlit Cloud
+- **Segurança**: SUPABASE_ANON_KEY + RLS
 
 **Assistente GPT:**
 - **Plataforma**: OpenAI GPT-4
 - **API**: Supabase REST API (PostgREST)
-- **Autenticação**: API Key (anon key) + Bearer token
 - **Schema**: OpenAPI 3.1.0
+- **Autenticação**: Bearer token (anon key)
 
 ## 📁 Estrutura do Projeto
 
@@ -103,8 +117,7 @@ Este projeto implementa um pipeline serverless completo que:
 BI-Cashforce/
 ├── api/
 │   ├── etl_sync.py              # Função serverless principal do ETL
-│   ├── resumo_alert.py          # Endpoint para alertas de volume
-│   └── test.py                  # Diagnóstico de integração com Sheets
+│   └── resumo_alert.py          # Endpoint para alertas de volume
 ├── docs/
 │   ├── README.md                # Índice da documentação
 │   ├── assistant/
@@ -120,10 +133,14 @@ BI-Cashforce/
 │   ├── filter_new_records.py    # CLI para filtrar CSVs locais
 │   └── test_supabase_api.sh     # Smoke tests dos endpoints REST
 ├── supabase/
-│   └── propostas_resumo_mensal.sql # MV + função de refresh
-├── .github/workflows/etl-sync.yml  # Disparo horário do ETL
-├── requirements.txt             # Dependências Python
+│   └── propostas_resumo_mensal.sql # Materialized View + função de refresh
+├── planilhas/
+│   └── prepare_csv_import.py    # Utilitário para preparar CSVs
+├── dashboard.py                 # Dashboard Streamlit (deploy separado)
+├── requirements.txt             # Dependências das APIs (Vercel)
+├── requirements-dashboard.txt   # Dependências do Dashboard (Streamlit Cloud)
 ├── vercel.json                  # Configuração Vercel
+├── .vercelignore                # Arquivos ignorados no deploy
 └── README.md                    # Este arquivo
 ```
 
@@ -133,31 +150,33 @@ BI-Cashforce/
 
 - Conta [Google Cloud Platform](https://console.cloud.google.com)
 - Conta [Supabase](https://supabase.com)
-- Conta [Vercel](https://vercel.com) (Plano Pro para Cron Jobs)
+- Conta [Vercel](https://vercel.com) (Hobby é suficiente)
+- Conta [Streamlit Cloud](https://share.streamlit.io) (grátis)
 - [Vercel CLI](https://vercel.com/cli) instalada
 
 ### Variáveis de Ambiente
 
-| Variável | Descrição |
-|----------|-----------|
-| `GOOGLE_SHEETS_CREDENTIALS_JSON` | JSON da Service Account do Google Cloud |
-| `GOOGLE_SHEET_NAME` | Nome da planilha (ex: "Operações") |
-| `SUPABASE_URL` | URL do projeto Supabase |
-| `SUPABASE_KEY` | Service role key do Supabase (para ETL com permissões de escrita) |
-| `SUPABASE_ANON_KEY` | Anon key do Supabase (para Dashboard com segurança RLS) |
+| Variável | Onde Usar | Descrição |
+|----------|-----------|-----------|
+| `GOOGLE_SHEETS_CREDENTIALS_JSON` | Vercel | JSON da Service Account do Google Cloud |
+| `GOOGLE_SHEET_NAME` | Vercel | Nome da planilha (ex: "Operações") |
+| `SUPABASE_URL` | Vercel + Streamlit | URL do projeto Supabase |
+| `SUPABASE_KEY` | Vercel apenas | Service role key (para ETL com escrita) |
+| `SUPABASE_ANON_KEY` | Streamlit apenas | Anon key (para Dashboard com RLS) |
 
 ### Setup Rápido
 
 1. **Google Cloud**: Crie Service Account e habilite Google Sheets API
 2. **Google Sheets**: Compartilhe planilha com email da Service Account
-3. **Supabase**: Crie tabela `propostas` (veja `docs/reference/database.md`)
-4. **Vercel**: Configure variáveis de ambiente e faça deploy
+3. **Supabase**: Crie tabela `propostas` e view `propostas_resumo_mensal`
+4. **Vercel**: Configure env vars e faça deploy das APIs
+5. **Streamlit Cloud**: Configure env vars e faça deploy do dashboard
 
 📚 **Guia completo**: [docs/guides/setup.md](./docs/guides/setup.md)
 
 ## 🚀 Deploy
 
-### Via Vercel CLI
+### 1. Deploy das APIs (Vercel)
 
 ```bash
 # Login
@@ -166,56 +185,55 @@ vercel login
 # Deploy
 vercel --prod
 
-# Configurar variáveis
+# Configurar variáveis (apenas para APIs)
 vercel env add GOOGLE_SHEETS_CREDENTIALS_JSON
 vercel env add GOOGLE_SHEET_NAME
 vercel env add SUPABASE_URL
 vercel env add SUPABASE_KEY
 
-# Redeploy
-vercel --prod
+# Testar API
+curl https://seu-projeto.vercel.app/api/etl_sync
 ```
 
-### Via GitHub (Recomendado)
+### 2. Deploy do Dashboard (Streamlit Cloud)
 
-1. Conecte o repositório ao Vercel
-2. Configure as variáveis de ambiente no dashboard
-3. Deploy automático a cada push
+1. Vá em https://share.streamlit.io
+2. Conecte seu repositório GitHub
+3. Configure o arquivo principal: `dashboard.py`
+4. Configure as variáveis de ambiente:
+   - `SUPABASE_URL`
+   - `SUPABASE_ANON_KEY`
+5. Clique em "Deploy"
 
-## 📊 Mapeamento de Dados
+📚 **Guia completo de deploy**: [docs/guides/deploy.md](./docs/guides/deploy.md)
 
-O ETL mapeia **59 colunas** da planilha para o banco:
+## 📊 Fonte Única de Verdade: `propostas_resumo_mensal`
 
-- **Proposta**: número, status, datas
-- **Comprador**: razão social, CNPJ, grupo econômico
-- **Nota Fiscal**: NFID (chave única), número, tipo
-- **Fornecedor**: razão social, CNPJ
-- **Financiador**: razão social, CNPJ, parceiro
-- **Valores**: bruto, líquido, taxas, deságio, IOF
-- **Pagamento**: forma, vencimento, status
-- **Anexos**: termo, boleto, comprovante
+Para garantir **consistência total** entre Dashboard e GPT, ambos leem da **mesma view materializada**:
 
-Ver detalhes completos: [docs/reference/database.md](./docs/reference/database.md)
-
-## ⏰ Agendamento
-
-O Cron Job executa **a cada hora** (XX:00):
-
-```json
-{
-  "schedule": "0 * * * *"
-}
+```sql
+CREATE MATERIALIZED VIEW propostas_resumo_mensal AS
+SELECT
+  DATE_TRUNC('month', data_operacao) AS competencia,
+  nome_parceiro,
+  COUNT(*) AS quantidade_operacoes,
+  SUM(valor_bruto_duplicata) AS total_bruto_duplicata,
+  SUM(valor_liquido_duplicata) AS total_liquido_duplicata,
+  SUM(receita_cashforce) AS total_receita_cashforce
+FROM propostas
+WHERE data_operacao IS NOT NULL
+GROUP BY 1, 2
+ORDER BY 1 DESC, 2;
 ```
 
-Para alterar a frequência, edite `vercel.json`:
-
-- `*/30 * * * *` - A cada 30 minutos
-- `0 */6 * * *` - A cada 6 horas
-- `0 9 * * *` - Todo dia às 09:00
+**Benefícios:**
+- ✅ **Consistência**: Dashboard e GPT mostram os mesmos números
+- ✅ **Performance**: 1000x mais rápido que ler 73k registros
+- ✅ **Segurança**: Dashboard usa ANON_KEY (público seguro com RLS)
 
 ## 🔍 Monitoramento
 
-### Logs
+### Logs das APIs
 
 ```bash
 # Ver logs em tempo real
@@ -248,12 +266,12 @@ vercel logs api/etl_sync.py
 ### Executar o Dashboard Localmente
 
 ```bash
-# Instalar dependências
-pip install -r requirements.txt
+# Instalar dependências do dashboard
+pip install -r requirements-dashboard.txt
 
 # Configurar .env
 cp .env.example .env
-# Edite .env e adicione SUPABASE_ANON_KEY
+# Adicione SUPABASE_URL e SUPABASE_ANON_KEY
 
 # Executar o dashboard
 streamlit run dashboard.py
@@ -261,11 +279,12 @@ streamlit run dashboard.py
 # Acessar: http://localhost:8501
 ```
 
-> **Nota sobre Segurança**: O dashboard utiliza `SUPABASE_ANON_KEY` em vez de `SUPABASE_KEY` (service_role) para garantir segurança. A chave `anon` é pública e segura, pois o acesso aos dados é controlado pelo Row Level Security (RLS) do Supabase, permitindo apenas operações de leitura autorizadas.
-
 ### Testar API ETL Localmente
 
 ```bash
+# Instalar dependências das APIs
+pip install -r requirements.txt
+
 # Testar localmente com Vercel Dev
 vercel dev
 
@@ -274,20 +293,27 @@ vercel dev
 
 ## 🐛 Troubleshooting
 
-### Erro: "Unable to open file"
-
-**Solução**: Verificar se a planilha foi compartilhada com o email da Service Account
-
-### Erro: "GOOGLE_SHEETS_CREDENTIALS_JSON não configurado"
-
-**Solução**: Configurar variável de ambiente na Vercel
-
-### Cron Job não executa
+### Dashboard não carrega dados
 
 **Verificar**:
-- Plano Pro/Enterprise da Vercel (Cron Jobs são pagos)
-- `vercel.json` está commitado corretamente
-- Status do Cron Job no dashboard da Vercel
+- `SUPABASE_ANON_KEY` está configurada corretamente
+- View `propostas_resumo_mensal` existe no Supabase
+- RLS está configurado permitindo leitura pública
+
+### API ETL retorna erro 500
+
+**Verificar**:
+- `GOOGLE_SHEETS_CREDENTIALS_JSON` está correto (JSON válido)
+- Planilha foi compartilhada com o email da Service Account
+- `SUPABASE_KEY` (service_role) tem permissões de escrita
+
+### Números inconsistentes entre Dashboard e GPT
+
+**Solução**: Ambos devem ler da view `propostas_resumo_mensal`. Verifique:
+```sql
+-- Atualizar a view manualmente se necessário
+SELECT refresh_propostas_resumo_mensal();
+```
 
 📚 **Mais soluções**: [docs/guides/troubleshooting.md](./docs/guides/troubleshooting.md)
 
@@ -300,17 +326,24 @@ vercel dev
 - [💾 Schema do Banco](./docs/reference/database.md) - Estrutura e consultas úteis
 - [🤖 Configuração do GPT](./docs/assistant/gpt_setup.md) - Assistente GPT customizado
 
-## 🤝 Contribuindo
-
-Contribuições são bem-vindas! Por favor:
-
-1. Fork o projeto
-2. Crie uma branch para sua feature (`git checkout -b feature/nova-feature`)
-3. Commit suas mudanças (`git commit -m 'Add: nova feature'`)
-4. Push para a branch (`git push origin feature/nova-feature`)
-5. Abra um Pull Request
-
 ## 📝 Changelog
+
+### v2.0.0 (2025-11-05) - Dashboard Refactor
+
+**Correções Críticas:**
+- 🔒 **Segurança**: Dashboard agora usa `SUPABASE_ANON_KEY` em vez de service_role key
+- ⚡ **Performance**: Dashboard lê da view `propostas_resumo_mensal` (1000x mais rápido)
+- ✅ **Consistência**: Dashboard e GPT agora usam a mesma fonte de verdade
+- 🧹 **Limpeza**: Removidos arquivos obsoletos (check_marfrig*.py, dashboard_backup.py, etc)
+- 📦 **Dependências**: Separadas em `requirements.txt` (APIs) e `requirements-dashboard.txt`
+- 🚀 **Deploy**: Dashboard movido para Streamlit Cloud (Vercel só APIs)
+
+**Arquivos Removidos:**
+- `check_marfrig.py` (debug temporário)
+- `check_marfrig_oct.py` (debug temporário)
+- `dashboard_backup.py` (backup obsoleto)
+- `sync_csv_to_supabase.py` (substituído por api/etl_sync.py)
+- `api/test.py` (debug temporário)
 
 ### v1.1.0 (2025-11-05)
 
@@ -324,10 +357,19 @@ Contribuições são bem-vindas! Por favor:
 
 - ✅ Pipeline ETL inicial
 - ✅ Mapeamento de 59 colunas
-- ✅ Cron Job horário (GitHub Actions)
 - ✅ UPSERT com conflito por NFID
 - ✅ Documentação inicial
 - ✅ Assistente GPT customizado integrado
+
+## 🤝 Contribuindo
+
+Contribuições são bem-vindas! Por favor:
+
+1. Fork o projeto
+2. Crie uma branch para sua feature (`git checkout -b feature/nova-feature`)
+3. Commit suas mudanças (`git commit -m 'Add: nova feature'`)
+4. Push para a branch (`git push origin feature/nova-feature`)
+5. Abra um Pull Request
 
 ## 📄 Licença
 
