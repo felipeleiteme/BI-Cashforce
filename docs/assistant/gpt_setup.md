@@ -94,10 +94,17 @@ razao_social_comprador=ilike.*sumire*
 status_proposta=eq.Aprovada
 ```
 
-**Por Status de Pagamento:**
+**Por Status de Pagamento (valores exatos após sanitização):**
 ```
-status_pagamento=eq.Pago
+status_pagamento=eq.A Receber    # Operações pendentes/aguardando pagamento (77.7% dos registros)
+status_pagamento=eq.Pago          # Operações pagas (14.4% dos registros)
+status_pagamento=eq.Vencido       # Operações vencidas (7.9% dos registros)
 ```
+
+⚠️ **IMPORTANTE**: Os únicos valores válidos de `status_pagamento` são:
+- **"A Receber"** (não "Pendente")
+- **"Pago"**
+- **"Vencido"**
 
 **Por Parceiro:**
 ```
@@ -141,6 +148,11 @@ limit=50
 **Buscar operações pagas em 2023 (intervalo completo):**
 ```
 ?status_pagamento=eq.Pago&data_operacao=gte.2023-01-01&data_operacao=lte.2023-12-31&limit=50&order=data_operacao.desc
+```
+
+**Buscar operações a receber (pendentes):**
+```
+?status_pagamento=eq.A Receber&limit=50&order=data_operacao.desc
 ```
 
 **Buscar por grupo econômico (paginaçao iniciando na página 1):**
@@ -480,3 +492,84 @@ Status da configuração do GPT:
 **Pronto!** Seu GPT customizado está configurado e funcionando! 🎉
 
 Agora qualquer pessoa com acesso ao seu GPT pode consultar os dados do Cashforce de forma natural, em linguagem humana.
+
+---
+
+## 📝 ATUALIZAÇÃO: Valores Corretos de Status de Pagamento
+
+### ⚠️ INFORMAÇÃO CRÍTICA PARA COPIAR NO GPT
+
+**Adicione esta seção nas instruções do GPT** (na seção "Como Usar a API" ou no final das instruções):
+
+```
+## Valores Válidos de Status de Pagamento (OBRIGATÓRIO)
+
+Após análise do banco de dados (73.290 registros), os ÚNICOS valores válidos de `status_pagamento` são:
+
+1. **"A Receber"** (56.915 operações - 77.7%)
+   - Representa operações PENDENTES/AGUARDANDO PAGAMENTO
+   - Use: `status_pagamento=eq.A Receber`
+   - ❌ NÃO use "Pendente", "Em Aberto" ou "Aguardando"
+
+2. **"Pago"** (10.582 operações - 14.4%)
+   - Representa operações PAGAS/QUITADAS
+   - Use: `status_pagamento=eq.Pago`
+
+3. **"Vencido"** (5.793 operações - 7.9%)
+   - Representa operações VENCIDAS/ATRASADAS
+   - Use: `status_pagamento=eq.Vencido`
+
+### Exemplos de Consultas Corretas:
+
+**Buscar operações pendentes (a receber):**
+```
+?status_pagamento=eq.A Receber&limit=50&order=data_operacao.desc
+```
+
+**Buscar operações pagas:**
+```
+?status_pagamento=eq.Pago&limit=50&order=data_operacao.desc
+```
+
+**Buscar operações vencidas:**
+```
+?status_pagamento=eq.Vencido&limit=50&order=data_operacao.desc
+```
+
+### Como Responder ao Usuário:
+
+Quando o usuário perguntar sobre operações "pendentes", "em aberto" ou "não pagas", você deve:
+
+1. Entender que ele está se referindo a **"A Receber"**
+2. Usar o filtro correto: `status_pagamento=eq.A Receber`
+3. Informar na resposta: "Busquei operações com status 'A Receber' (operações pendentes)"
+
+### Importante:
+
+- Todos os valores de status foram padronizados usando `.str.title()` no ETL
+- Os valores são case-sensitive (use exatamente "A Receber", não "a receber")
+- Se o usuário usar termos diferentes, traduza para os valores válidos
+```
+
+### Como Adicionar no GPT:
+
+1. Acesse o GPT Editor: https://chat.openai.com/gpts/editor
+2. Vá na seção **"Instructions"**
+3. **Cole o texto acima no FINAL das instruções atuais**
+4. Clique em **"Save"** ou **"Update"**
+5. Teste com: "Mostre operações pendentes" ou "Liste operações a receber"
+
+---
+
+## 🧪 Testes Recomendados Após Atualização:
+
+```
+✅ "Mostre operações com status de pagamento = A Receber"
+✅ "Liste operações pendentes"
+✅ "Quantas operações estão aguardando pagamento?"
+✅ "Qual o total de operações a receber do Marfrig?"
+✅ "Mostre operações pagas em outubro de 2024"
+✅ "Liste operações vencidas"
+```
+
+Se todas essas consultas funcionarem, o GPT está 100% configurado! ✅
