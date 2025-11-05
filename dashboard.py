@@ -148,17 +148,31 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ==================== CONEXÃO COM SUPABASE ====================
-SUPABASE_URL = os.getenv("SUPABASE_URL")
-# Usar SUPABASE_ANON_KEY (chave pública) - mais seguro para dashboard público
-# RLS garante acesso somente aos dados permitidos
-SUPABASE_KEY = os.getenv("SUPABASE_ANON_KEY")
+# Tentar carregar de secrets do Streamlit Cloud primeiro, depois de .env
+try:
+    # Streamlit Cloud usa st.secrets
+    SUPABASE_URL = st.secrets.get("SUPABASE_URL", os.getenv("SUPABASE_URL"))
+    SUPABASE_KEY = st.secrets.get("SUPABASE_ANON_KEY", os.getenv("SUPABASE_ANON_KEY"))
+except:
+    # Fallback para .env local
+    SUPABASE_URL = os.getenv("SUPABASE_URL")
+    SUPABASE_KEY = os.getenv("SUPABASE_ANON_KEY")
 
 @st.cache_resource
 def get_supabase_client():
     """Conexão com Supabase com cache usando anon key (chave pública segura)"""
     try:
         if not SUPABASE_KEY:
-            st.error("SUPABASE_ANON_KEY não configurada. Configure no arquivo .env")
+            st.error("⚠️ SUPABASE_ANON_KEY não configurada.")
+            st.info("""
+                **Para Streamlit Cloud:** Configure em Settings → Secrets
+
+                **Para desenvolvimento local:** Adicione ao arquivo .env:
+                ```
+                SUPABASE_URL=https://ximsykesrzxgknonmxws.supabase.co
+                SUPABASE_ANON_KEY=sua_chave_aqui
+                ```
+            """)
             st.stop()
         return create_client(SUPABASE_URL, SUPABASE_KEY)
     except Exception as e:
