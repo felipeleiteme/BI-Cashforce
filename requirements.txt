@@ -6,3 +6,6 @@ python-dotenv>=1.0.0
 # ==================== ETL (api/etl_sync.py) ====================
 gspread>=5.12.0
 oauth2client>=4.1.3
+
+# ==================== DASHBOARD DEPENDÊNCIAS LEVES ====================
+plotly>=5.18.0
