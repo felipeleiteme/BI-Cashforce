@@ -389,62 +389,29 @@ with title_col:
     """, unsafe_allow_html=True)
 
 with controls_col:
-    # Linha de filtros
-    filter_col1, filter_col2, filter_col3 = st.columns([2, 1.5, 2])
-
-    with filter_col1:
-        date_range = st.date_input(
-            "📅 Período Principal",
-            value=(default_start, max_date),
-            min_value=min_date,
-            max_value=max_date,
-            key=f"date_range_{min_date}_{max_date}"
-        )
-        if isinstance(date_range, tuple) and len(date_range) == 2:
-            start_date, end_date = date_range
-        else:
-            start_date = end_date = date_range if not isinstance(date_range, tuple) else date_range[0]
-
-    with filter_col2:
-        st.markdown("<div style='height: 8px;'></div>", unsafe_allow_html=True)
-        enable_comparison = st.checkbox("🔄 Comparar", value=False)
-
-    with filter_col3:
-        if enable_comparison:
-            date_range_comp = st.date_input(
-                "📊 Período 2",
-                value=(min_date, min_date + timedelta(days=90)),
-                min_value=min_date,
-                max_value=max_date,
-                key=f"date_range_comp_{min_date}_{max_date}"
-            )
-            if isinstance(date_range_comp, tuple) and len(date_range_comp) == 2:
-                start_date_comp, end_date_comp = date_range_comp
-            else:
-                start_date_comp = end_date_comp = date_range_comp if not isinstance(date_range_comp, tuple) else date_range_comp[0]
-        else:
-            start_date_comp = None
-            end_date_comp = None
+    # Filtro de período
+    date_range = st.date_input(
+        "📅 Período",
+        value=(default_start, max_date),
+        min_value=min_date,
+        max_value=max_date,
+        key=f"date_range_{min_date}_{max_date}"
+    )
+    if isinstance(date_range, tuple) and len(date_range) == 2:
+        start_date, end_date = date_range
+    else:
+        start_date = end_date = date_range if not isinstance(date_range, tuple) else date_range[0]
 
 # Linha de informação
 st.markdown("<div style='border-top: 1px solid var(--border); padding-top: 0.75rem; margin-top: 0.5rem;'></div>", unsafe_allow_html=True)
 
 info_col1, info_col2 = st.columns([4, 1])
 with info_col1:
-    if enable_comparison and start_date_comp:
-        st.markdown(f"""
-            <p style='font-size: 0.875rem; color: var(--slate-600); margin: 0;'>
-                <span style='color: var(--teal-700); font-weight: 500;'>Período 1:</span> {start_date.strftime('%d/%m/%Y')} - {end_date.strftime('%d/%m/%Y')}
-                <span style='margin: 0 0.5rem; color: var(--slate-400);'>|</span>
-                <span style='color: var(--emerald-700); font-weight: 500;'>Período 2:</span> {start_date_comp.strftime('%d/%m/%Y')} - {end_date_comp.strftime('%d/%m/%Y')}
-            </p>
-        """, unsafe_allow_html=True)
-    else:
-        st.markdown(f"""
-            <p style='font-size: 0.875rem; color: var(--slate-600); margin: 0;'>
-                <span style='font-weight: 500;'>Período:</span> {start_date.strftime('%d/%m/%Y')} - {end_date.strftime('%d/%m/%Y')}
-            </p>
-        """, unsafe_allow_html=True)
+    st.markdown(f"""
+        <p style='font-size: 0.875rem; color: var(--slate-600); margin: 0;'>
+            <span style='font-weight: 500;'>Período:</span> {start_date.strftime('%d/%m/%Y')} - {end_date.strftime('%d/%m/%Y')}
+        </p>
+    """, unsafe_allow_html=True)
 
 with info_col2:
     st.markdown(f"""
@@ -521,22 +488,6 @@ if 'competencia' in df_filtered.columns:
 # Filtro de parceiro
 if selected_parceiros and 'parceiro' in df_filtered.columns:
     df_filtered = df_filtered[df_filtered['parceiro'].isin(selected_parceiros)]
-
-# ==================== APLICAR FILTROS PERÍODO DE COMPARAÇÃO ====================
-df_filtered_comp = None
-if enable_comparison and start_date_comp and end_date_comp:
-    df_filtered_comp = df.copy()
-
-    # Filtro de data (período de comparação)
-    if 'competencia' in df_filtered_comp.columns:
-        df_filtered_comp = df_filtered_comp[
-            (df_filtered_comp['competencia'].dt.date >= start_date_comp) &
-            (df_filtered_comp['competencia'].dt.date <= end_date_comp)
-        ]
-
-    # Filtro de parceiro (mesmos parceiros)
-    if selected_parceiros and 'parceiro' in df_filtered_comp.columns:
-        df_filtered_comp = df_filtered_comp[df_filtered_comp['parceiro'].isin(selected_parceiros)]
 
 # ==================== CALCULAR PERÍODO ANTERIOR PARA COMPARAÇÃO ====================
 days_diff = (end_date - start_date).days
@@ -816,10 +767,6 @@ with tab2:
 
 # ==================== TAB 1: OVERVIEW GERAL ====================
 with tab1:
-    # Banner minimalista de comparação ativa
-    if enable_comparison and df_filtered_comp is not None:
-        st.info("Modo comparação: métricas comparando P1 vs P2", icon="🔄")
-
     # KPIs Principais
     st.markdown("### Indicadores Principais")
 
@@ -828,105 +775,65 @@ with tab1:
     # Volume Total
     with col1:
         volume_atual = df_filtered['total_bruto_duplicata'].sum() if 'total_bruto_duplicata' in df_filtered.columns else 0
-
-        # Usar período de comparação se ativado, senão usar período anterior automático
-        if enable_comparison and df_filtered_comp is not None:
-            volume_comp = df_filtered_comp['total_bruto_duplicata'].sum() if 'total_bruto_duplicata' in df_filtered_comp.columns else 0
-            delta_volume = ((volume_atual - volume_comp) / volume_comp * 100) if volume_comp > 0 else 0
-            delta_label = f"{delta_volume:+.1f}% vs P2"
-        else:
-            volume_anterior = df_previous['total_bruto_duplicata'].sum() if 'total_bruto_duplicata' in df_previous.columns else 0
-            delta_volume = ((volume_atual - volume_anterior) / volume_anterior * 100) if volume_anterior > 0 else 0
-            delta_label = f"{delta_volume:+.1f}%"
+        volume_anterior = df_previous['total_bruto_duplicata'].sum() if 'total_bruto_duplicata' in df_previous.columns else 0
+        delta_volume = ((volume_atual - volume_anterior) / volume_anterior * 100) if volume_anterior > 0 else 0
 
         st.metric(
-            label="Volume Total (P1)" if enable_comparison else "Volume Total",
+            label="Volume Total",
             value=f"R$ {volume_atual:,.0f}",
-            delta=delta_label
+            delta=f"{delta_volume:+.1f}%"
         )
 
     # Número de Operações
     with col2:
         ops_atual = df_filtered['quantidade_operacoes'].sum() if 'quantidade_operacoes' in df_filtered.columns else 0
-
-        if enable_comparison and df_filtered_comp is not None:
-            ops_comp = df_filtered_comp['quantidade_operacoes'].sum() if 'quantidade_operacoes' in df_filtered_comp.columns else 0
-            delta_ops = ((ops_atual - ops_comp) / ops_comp * 100) if ops_comp > 0 else 0
-            delta_label_ops = f"{delta_ops:+.1f}% vs P2"
-        else:
-            ops_anterior = df_previous['quantidade_operacoes'].sum() if 'quantidade_operacoes' in df_previous.columns else 0
-            delta_ops = ((ops_atual - ops_anterior) / ops_anterior * 100) if ops_anterior > 0 else 0
-            delta_label_ops = f"{delta_ops:+.1f}%"
+        ops_anterior = df_previous['quantidade_operacoes'].sum() if 'quantidade_operacoes' in df_previous.columns else 0
+        delta_ops = ((ops_atual - ops_anterior) / ops_anterior * 100) if ops_anterior > 0 else 0
 
         st.metric(
-            label="Operações (P1)" if enable_comparison else "Operações",
+            label="Operações",
             value=f"{int(ops_atual):,}",
-            delta=delta_label_ops
+            delta=f"{delta_ops:+.1f}%"
         )
 
     # Receita Cashforce
     with col3:
         receita_atual = df_filtered['total_receita_cashforce'].sum() if 'total_receita_cashforce' in df_filtered.columns else 0
-
-        if enable_comparison and df_filtered_comp is not None:
-            receita_comp = df_filtered_comp['total_receita_cashforce'].sum() if 'total_receita_cashforce' in df_filtered_comp.columns else 0
-            delta_receita = ((receita_atual - receita_comp) / receita_comp * 100) if receita_comp > 0 else 0
-            delta_label_receita = f"{delta_receita:+.1f}% vs P2"
-        else:
-            receita_anterior = df_previous['total_receita_cashforce'].sum() if 'total_receita_cashforce' in df_previous.columns else 0
-            delta_receita = ((receita_atual - receita_anterior) / receita_anterior * 100) if receita_anterior > 0 else 0
-            delta_label_receita = f"{delta_receita:+.1f}%"
+        receita_anterior = df_previous['total_receita_cashforce'].sum() if 'total_receita_cashforce' in df_previous.columns else 0
+        delta_receita = ((receita_atual - receita_anterior) / receita_anterior * 100) if receita_anterior > 0 else 0
 
         st.metric(
-            label="Receita CF (P1)" if enable_comparison else "Receita Cashforce",
+            label="Receita Cashforce",
             value=f"R$ {receita_atual:,.0f}",
-            delta=delta_label_receita
+            delta=f"{delta_receita:+.1f}%"
         )
 
     # Ticket Médio
     with col4:
         ticket_atual = volume_atual / ops_atual if ops_atual > 0 else 0
-
-        if enable_comparison and df_filtered_comp is not None:
-            volume_comp = df_filtered_comp['total_bruto_duplicata'].sum() if 'total_bruto_duplicata' in df_filtered_comp.columns else 0
-            ops_comp = df_filtered_comp['quantidade_operacoes'].sum() if 'quantidade_operacoes' in df_filtered_comp.columns else 0
-            ticket_comp = volume_comp / ops_comp if ops_comp > 0 else 0
-            delta_ticket = ((ticket_atual - ticket_comp) / ticket_comp * 100) if ticket_comp > 0 else 0
-            delta_label_ticket = f"{delta_ticket:+.1f}% vs P2"
-        else:
-            volume_anterior = df_previous['total_bruto_duplicata'].sum() if 'total_bruto_duplicata' in df_previous.columns else 0
-            ops_anterior = df_previous['quantidade_operacoes'].sum() if 'quantidade_operacoes' in df_previous.columns else 0
-            ticket_anterior = volume_anterior / ops_anterior if ops_anterior > 0 else 0
-            delta_ticket = ((ticket_atual - ticket_anterior) / ticket_anterior * 100) if ticket_anterior > 0 else 0
-            delta_label_ticket = f"{delta_ticket:+.1f}%"
+        volume_anterior = df_previous['total_bruto_duplicata'].sum() if 'total_bruto_duplicata' in df_previous.columns else 0
+        ops_anterior = df_previous['quantidade_operacoes'].sum() if 'quantidade_operacoes' in df_previous.columns else 0
+        ticket_anterior = volume_anterior / ops_anterior if ops_anterior > 0 else 0
+        delta_ticket = ((ticket_atual - ticket_anterior) / ticket_anterior * 100) if ticket_anterior > 0 else 0
 
         st.metric(
-            label="Ticket Médio (P1)" if enable_comparison else "Ticket Médio",
+            label="Ticket Médio",
             value=f"R$ {ticket_atual:,.0f}",
-            delta=delta_label_ticket
+            delta=f"{delta_ticket:+.1f}%"
         )
 
     # Margem Cashforce
     with col5:
         margem_atual = (receita_atual / volume_atual * 100) if volume_atual > 0 else 0
-
-        if enable_comparison and df_filtered_comp is not None:
-            volume_comp = df_filtered_comp['total_bruto_duplicata'].sum() if 'total_bruto_duplicata' in df_filtered_comp.columns else 0
-            receita_comp = df_filtered_comp['total_receita_cashforce'].sum() if 'total_receita_cashforce' in df_filtered_comp.columns else 0
-            margem_comp = (receita_comp / volume_comp * 100) if volume_comp > 0 else 0
-            delta_margem = margem_atual - margem_comp
-            delta_label_margem = f"{delta_margem:+.2f}pp vs P2"
-        else:
-            volume_anterior = df_previous['total_bruto_duplicata'].sum() if 'total_bruto_duplicata' in df_previous.columns else 0
-            receita_anterior = df_previous['total_receita_cashforce'].sum() if 'total_receita_cashforce' in df_previous.columns else 0
-            margem_anterior = (receita_anterior / volume_anterior * 100) if volume_anterior > 0 else 0
-            delta_margem = margem_atual - margem_anterior
-            delta_label_margem = f"{delta_margem:+.2f}pp"
+        volume_anterior = df_previous['total_bruto_duplicata'].sum() if 'total_bruto_duplicata' in df_previous.columns else 0
+        receita_anterior = df_previous['total_receita_cashforce'].sum() if 'total_receita_cashforce' in df_previous.columns else 0
+        margem_anterior = (receita_anterior / volume_anterior * 100) if volume_anterior > 0 else 0
+        delta_margem = margem_atual - margem_anterior
 
         st.metric(
-            label="Margem % (P1)" if enable_comparison else "Margem %",
+            label="Margem %",
             value=f"{margem_atual:.2f}%",
-            delta=delta_label_margem
+            delta=f"{delta_margem:+.2f}pp"
         )
 
     st.markdown("---")
