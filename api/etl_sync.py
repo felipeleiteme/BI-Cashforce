@@ -121,6 +121,35 @@ class handler(BaseHTTPRequestHandler):
 
             df = df.rename(columns=column_mapping)
 
+            # --- NOVO BLOCO DE SANITIZAÇÃO DE TEXTO ---
+            # Padroniza colunas de texto para evitar inconsistências
+            # Converte "pendente ", "PENDENTE", "Pendente" -> "Pendente"
+            print("[INFO] Sanitizando colunas de texto (status, parceiro, etc.)...")
+            text_columns_to_sanitize = [
+                'status_proposta',
+                'grupo_economico',
+                'razao_social_comprador',
+                'status_comprador',
+                'tipo_nota',
+                'razao_social_fornecedor',
+                'status_fornecedor',
+                'razao_social_financiador',
+                'parceiro',
+                'faixa_taxa_cashforce',
+                'forma_pagamento',
+                'status_pagamento',
+                'status_antecipacao'
+            ]
+
+            for col in text_columns_to_sanitize:
+                if col in df.columns:
+                    # Garante que é string antes de aplicar métodos .str
+                    df[col] = df[col].astype(str).str.strip().str.title()
+                    # Substitui strings vazias ou 'None' (que virou "None") por valor Nulo real
+                    df[col] = df[col].replace({'': None, 'None': None, 'Nan': None})
+
+            # --- FIM DO NOVO BLOCO ---
+
             # Remover linhas onde nfid está vazio (obrigatório)
             df = df[df['nfid'].notna() & (df['nfid'] != '')]
 
