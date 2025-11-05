@@ -11,18 +11,31 @@ select
     coalesce(grupo_economico, 'Sem grupo') as grupo_economico,
     coalesce(razao_social_comprador, 'Sem comprador') as razao_social_comprador,
     coalesce(parceiro, 'Sem parceiro') as parceiro,
-    count(*) as quantidade_operacoes,
+    coalesce(razao_social_financiador, 'Sem financiador') as razao_social_financiador, -- NOVA COLUNA
+
+    -- Contagens e KPIs
+    count(*) as quantidade_operacoes, -- Equivale a "# Operações"
+    coalesce(count(distinct nfid), 0)::int as total_nf_transportadas, -- NOVO KPI
+    coalesce(count(distinct cnpj_comprador), 0)::int as total_sacados, -- NOVO KPI
+    coalesce(count(distinct cnpj_fornecedor), 0)::int as total_fornecedores, -- NOVO KPI
+
+    -- Valores
     coalesce(sum(valor_bruto_duplicata), 0)::numeric(18,2) as total_bruto_duplicata,
     coalesce(sum(valor_liquido_duplicata), 0)::numeric(18,2) as total_liquido_duplicata,
-    coalesce(sum(receita_cashforce), 0)::numeric(18,2) as total_receita_cashforce
+    coalesce(sum(receita_cashforce), 0)::numeric(18,2) as total_receita_cashforce,
+
+    -- Médias (Novos KPIs)
+    coalesce(avg(taxa_efetiva_mes_percentual), 0)::numeric(8,4) as taxa_efetiva_media,
+    coalesce(avg(prazo_medio_operacao), 0)::numeric(10,2) as prazo_medio
+
 from public.propostas
 where data_operacao is not null
-group by 1,2,3,4,5,6,7
+group by 1,2,3,4,5,6,7,8 -- ADICIONADO CAMPO 8
 with no data;
 
 -- 2. Índices para suportar refresh concorrente e filtros
 create unique index if not exists propostas_resumo_mensal_mv_uq
-    on public.propostas_resumo_mensal_mv (competencia_id, grupo_economico, razao_social_comprador, parceiro);
+    on public.propostas_resumo_mensal_mv (competencia_id, grupo_economico, razao_social_comprador, parceiro, razao_social_financiador); -- ADICIONADO FINANCIADOR
 
 create index if not exists propostas_resumo_mensal_mv_competencia_idx
     on public.propostas_resumo_mensal_mv (competencia desc);
@@ -69,7 +82,7 @@ grant execute on function public.refresh_propostas_resumo_mensal() to service_ro
 grant execute on function public.refresh_propostas_resumo_mensal() to authenticated;
 
 comment on materialized view public.propostas_resumo_mensal_mv is
-    'Consolidados mensais de propostas por grupo econômico, comprador e parceiro';
+    'Consolidados mensais de propostas por grupo econômico, comprador, parceiro e financiador';
 
 comment on function public.refresh_propostas_resumo_mensal() is
     'Atualiza a materialized view propostas_resumo_mensal_mv após o ETL';
