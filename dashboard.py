@@ -379,80 +379,72 @@ else:
     max_date = datetime.now().date()
     default_start = max_date - timedelta(days=90)
 
-# ==================== HEADER COM FILTROS ====================
-# Título e linha de controles
-title_col, controls_col = st.columns([1, 2])
+# ==================== HEADER LIMPO ====================
+st.markdown("""
+    <div style='padding: 1.5rem 0 1rem 0; border-bottom: 1px solid var(--border); margin-bottom: 2rem;'>
+        <h1 style='margin: 0; font-size: 1.75rem; font-weight: 500; color: var(--primary);'>
+            Dashboard Executivo BI Cashforce
+        </h1>
+    </div>
+""", unsafe_allow_html=True)
 
-with title_col:
-    st.markdown("""
-        <div style='padding: 1rem 0;'>
-            <h1 style='margin: 0; font-size: 1.75rem; font-weight: 500; color: var(--primary);'>
-                Dashboard Executivo BI Cashforce
-            </h1>
-        </div>
-    """, unsafe_allow_html=True)
+# ==================== SIDEBAR COM FILTROS ====================
+st.sidebar.header("Filtros")
 
-# Filtros movidos para o cabeçalho
-with controls_col:
-    f1, f2, f3 = st.columns(3)
+# Filtro de Período
+st.sidebar.markdown("### 📅 Período")
+date_range = st.sidebar.date_input(
+    "Selecione o período",
+    value=(default_start, max_date),
+    min_value=min_date,
+    max_value=max_date,
+    key=f"date_range_{min_date}_{max_date}",
+    label_visibility="collapsed"
+)
+if isinstance(date_range, tuple) and len(date_range) == 2:
+    start_date, end_date = date_range
+else:
+    start_date = end_date = date_range if not isinstance(date_range, tuple) else date_range[0]
 
-    with f1:
-        # Filtro de período
-        date_range = st.date_input(
-            "📅 Período",
-            value=(default_start, max_date),
-            min_value=min_date,
-            max_value=max_date,
-            key=f"date_range_{min_date}_{max_date}"
-        )
-        if isinstance(date_range, tuple) and len(date_range) == 2:
-            start_date, end_date = date_range
-        else:
-            start_date = end_date = date_range if not isinstance(date_range, tuple) else date_range[0]
+st.sidebar.caption(f"📆 {start_date.strftime('%d/%m/%Y')} - {end_date.strftime('%d/%m/%Y')}")
 
-    # Listas de opções para filtros
-    parceiros_all = sorted(df['parceiro'].dropna().unique().tolist()) if 'parceiro' in df.columns else []
-    financiadores_all = sorted(df['razao_social_financiador'].dropna().unique().tolist()) if 'razao_social_financiador' in df.columns else []
+# Listas de opções para filtros
+parceiros_all = sorted(df['parceiro'].dropna().unique().tolist()) if 'parceiro' in df.columns else []
+financiadores_all = sorted(df['razao_social_financiador'].dropna().unique().tolist()) if 'razao_social_financiador' in df.columns else []
 
-    with f2:
-        selected_parceiros = st.multiselect(
-            "👥 Parceiro",
-            options=parceiros_all,
-            default=parceiros_all,
-            help="Filtro principal para análise por parceiro"
-        )
+# Filtro de Parceiro
+st.sidebar.markdown("### 👥 Parceiros")
+selected_parceiros = st.sidebar.multiselect(
+    "Selecione os Parceiros",
+    options=parceiros_all,
+    default=parceiros_all,
+    help="Filtro principal para análise por parceiro",
+    label_visibility="collapsed"
+)
 
-    with f3:
-        selected_financiadores = st.multiselect(
-            "🏦 Financiador",
-            options=financiadores_all,
-            default=financiadores_all,
-            help="Filtrar por Razão Social do Financiador"
-        )
+if selected_parceiros:
+    st.sidebar.caption(f"✓ {len(selected_parceiros)} parceiro(s) selecionado(s)")
+else:
+    st.sidebar.warning("⚠️ Nenhum parceiro selecionado")
 
-# Linha de informação
-st.markdown("<div style='border-top: 1px solid var(--border); padding-top: 0.75rem; margin-top: 0.5rem;'></div>", unsafe_allow_html=True)
+# Filtro de Financiador
+st.sidebar.markdown("### 🏦 Financiadores")
+selected_financiadores = st.sidebar.multiselect(
+    "Selecione os Financiadores",
+    options=financiadores_all,
+    default=financiadores_all,
+    help="Filtrar por Razão Social do Financiador",
+    label_visibility="collapsed"
+)
 
-info_col1, info_col2 = st.columns([4, 1])
-with info_col1:
-    st.markdown(f"""
-        <p style='font-size: 0.875rem; color: var(--slate-600); margin: 0;'>
-            <span style='font-weight: 500;'>Período:</span> {start_date.strftime('%d/%m/%Y')} - {end_date.strftime('%d/%m/%Y')} |
-            <span style='font-weight: 500;'>Parceiros:</span> {len(selected_parceiros)} selecionados |
-            <span style='font-weight: 500;'>Financiadores:</span> {len(selected_financiadores)} selecionados
-        </p>
-    """, unsafe_allow_html=True)
+if selected_financiadores:
+    st.sidebar.caption(f"✓ {len(selected_financiadores)} financiador(es) selecionado(s)")
+else:
+    st.sidebar.warning("⚠️ Nenhum financiador selecionado")
 
-with info_col2:
-    st.markdown(f"""
-        <p style='font-size: 0.75rem; color: var(--slate-500); text-align: right; margin: 0;'>
-            ⏱️ {datetime.now().strftime('%d/%m/%Y %H:%M')}
-        </p>
-    """, unsafe_allow_html=True)
+st.sidebar.markdown("---")
 
-st.markdown("<div style='margin-bottom: 1.5rem;'></div>", unsafe_allow_html=True)
-
-# ==================== SIDEBAR (AGORA SÓ INFO) ====================
+# ==================== SIDEBAR - INFORMAÇÕES ====================
 st.sidebar.header("Informações Gerais")
 
 # Contar registros por parceiro
