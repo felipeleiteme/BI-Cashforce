@@ -20,129 +20,253 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# ==================== CSS CUSTOMIZADO - DESIGN MINIMALISTA ====================
+# ==================== CSS CUSTOMIZADO - DESIGN SYSTEM GLOBALS.CSS ====================
 st.markdown("""
     <style>
-    /* Paleta minimalista */
+    /* ==================== DESIGN SYSTEM - INSPIRADO EM GLOBALS.CSS ==================== */
+
+    /* Color Tokens - Baseado no design system */
     :root {
-        --primary: #2c3e50;
-        --secondary: #34495e;
-        --accent: #3498db;
+        --font-size: 16px;
         --background: #ffffff;
-        --border: #e0e0e0;
-        --text: #2c3e50;
-        --text-light: #7f8c8d;
+        --foreground: #24292f;
+        --primary: #030213;
+        --primary-foreground: #ffffff;
+        --muted: #ececf0;
+        --muted-foreground: #717182;
+        --border: rgba(0, 0, 0, 0.1);
+
+        /* Teal/Emerald Scale */
+        --teal-50: #f0fdfa;
+        --teal-100: #ccfbf1;
+        --teal-200: #99f6e4;
+        --teal-500: #14b8a6;
+        --teal-600: #0d9488;
+        --teal-700: #0f766e;
+        --teal-900: #134e4a;
+        --emerald-50: #ecfdf5;
+        --emerald-500: #10b981;
+        --emerald-600: #059669;
+        --emerald-700: #047857;
+
+        /* Slate Scale */
+        --slate-50: #f8fafc;
+        --slate-200: #e2e8f0;
+        --slate-300: #cbd5e1;
+        --slate-400: #94a3b8;
+        --slate-500: #64748b;
+        --slate-600: #475569;
+        --slate-700: #334155;
+        --slate-900: #0f172a;
+
+        /* Design tokens */
+        --radius: 0.625rem;
+        --radius-2xl: 1rem;
+        --font-weight-medium: 500;
+        --font-weight-normal: 400;
     }
 
-    /* Reset e base */
+    /* Typography */
     * {
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     }
 
-    /* Estilo do header minimalista */
+    html {
+        font-size: var(--font-size);
+    }
+
+    /* Background gradient like App.tsx */
+    .stApp {
+        background: linear-gradient(135deg, var(--slate-50) 0%, rgba(240, 253, 250, 0.2) 50%, var(--slate-50) 100%);
+    }
+
+    /* Header styling */
     .main-header {
         background: #ffffff;
-        padding: 2rem 0;
+        padding: 1.5rem 0;
         border-bottom: 1px solid var(--border);
         margin-bottom: 2rem;
     }
 
     .main-header h1 {
         margin: 0;
-        font-size: 1.75rem;
-        font-weight: 600;
+        font-size: 1.5rem;
+        font-weight: var(--font-weight-medium);
         color: var(--primary);
-        letter-spacing: -0.5px;
+        line-height: 1.5;
     }
 
     .main-header p {
         margin: 0.5rem 0 0 0;
         font-size: 0.875rem;
-        color: var(--text-light);
-        font-weight: 400;
+        color: var(--slate-500);
+        font-weight: var(--font-weight-normal);
     }
 
-    /* Sidebar minimalista */
-    .css-1d391kg {
-        background-color: #fafafa;
+    /* Sidebar styling */
+    [data-testid="stSidebar"] {
+        background-color: var(--slate-50);
+        border-right: 1px solid var(--border);
     }
 
-    /* Tabs minimalistas */
+    [data-testid="stSidebar"] .css-1d391kg {
+        background-color: var(--slate-50);
+    }
+
+    /* Tabs - Clean design like components */
     .stTabs [data-baseweb="tab-list"] {
         gap: 0;
         border-bottom: 1px solid var(--border);
+        background-color: transparent;
     }
 
     .stTabs [data-baseweb="tab"] {
         border-radius: 0;
-        padding: 12px 24px;
-        font-weight: 500;
+        padding: 0.75rem 1.5rem;
+        font-weight: var(--font-weight-medium);
         font-size: 0.875rem;
-        color: var(--text-light);
+        color: var(--slate-600);
         border-bottom: 2px solid transparent;
+        background-color: transparent;
     }
 
     .stTabs [data-baseweb="tab"]:hover {
-        background-color: #f8f9fa;
+        background-color: var(--slate-50);
+        color: var(--slate-900);
     }
 
     .stTabs [aria-selected="true"] {
-        color: var(--primary);
-        border-bottom-color: var(--accent);
+        color: var(--teal-700);
+        border-bottom-color: var(--teal-600);
+        background-color: transparent;
     }
 
-    /* Métricas minimalistas */
+    /* Metric Cards - Like MetricsCards.tsx */
+    [data-testid="stMetric"] {
+        background: white;
+        border: 1px solid var(--slate-200);
+        border-radius: var(--radius-2xl);
+        padding: 1.5rem;
+        box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+        transition: all 0.3s ease;
+    }
+
+    [data-testid="stMetric"]:hover {
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+        border-color: var(--teal-200);
+    }
+
     [data-testid="stMetricValue"] {
         font-size: 1.5rem;
-        font-weight: 600;
-        color: var(--primary);
+        font-weight: var(--font-weight-medium);
+        color: var(--slate-900);
     }
 
     [data-testid="stMetricLabel"] {
-        font-size: 0.75rem;
-        font-weight: 500;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        color: var(--text-light);
+        font-size: 0.875rem;
+        font-weight: var(--font-weight-medium);
+        color: var(--slate-500);
+        text-transform: none;
+        letter-spacing: 0;
     }
 
-    /* Ocultar elementos desnecessários */
+    [data-testid="stMetricDelta"] {
+        font-size: 0.875rem;
+    }
+
+    /* Chart containers */
+    .js-plotly-plot {
+        border-radius: var(--radius-2xl);
+        background: white;
+        border: 1px solid var(--slate-200);
+        padding: 1rem;
+    }
+
+    /* Buttons */
+    .stButton > button {
+        background: linear-gradient(135deg, var(--teal-500) 0%, var(--emerald-500) 100%);
+        color: white;
+        border: none;
+        border-radius: var(--radius);
+        padding: 0.5rem 1.5rem;
+        font-weight: var(--font-weight-medium);
+        font-size: 1rem;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
+
+    .stButton > button:hover {
+        background: linear-gradient(135deg, var(--teal-600) 0%, var(--emerald-600) 100%);
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+        transform: translateY(-1px);
+    }
+
+    /* Download button */
+    .stDownloadButton > button {
+        background: white;
+        color: var(--teal-700);
+        border: 1px solid var(--teal-200);
+        border-radius: var(--radius);
+        padding: 0.5rem 1.5rem;
+        font-weight: var(--font-weight-medium);
+        transition: all 0.3s ease;
+    }
+
+    .stDownloadButton > button:hover {
+        background: var(--teal-50);
+        border-color: var(--teal-600);
+    }
+
+    /* Dataframes */
+    .dataframe {
+        font-size: 0.875rem;
+        border: 1px solid var(--slate-200);
+        border-radius: var(--radius);
+    }
+
+    /* Section headers */
+    h3 {
+        font-size: 1.125rem;
+        font-weight: var(--font-weight-medium);
+        color: var(--slate-900);
+        margin-top: 2rem;
+        margin-bottom: 1rem;
+        line-height: 1.5;
+    }
+
+    h4 {
+        font-size: 1rem;
+        font-weight: var(--font-weight-medium);
+        color: var(--slate-700);
+        margin-top: 1.5rem;
+        margin-bottom: 0.75rem;
+        line-height: 1.5;
+    }
+
+    /* Hide unnecessary elements */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     .css-1v0mbdj {display: none;}
 
-    /* Espaçamento limpo */
+    /* Container spacing */
     .block-container {
         padding-top: 1rem;
         padding-bottom: 2rem;
         max-width: 1400px;
     }
 
-    /* Títulos de seção */
-    h3 {
-        font-size: 1.125rem;
-        font-weight: 600;
-        color: var(--primary);
-        margin-top: 2rem;
-        margin-bottom: 1rem;
-        border-bottom: 1px solid var(--border);
-        padding-bottom: 0.5rem;
+    /* Info/Warning boxes */
+    .stAlert {
+        border-radius: var(--radius);
+        border: 1px solid var(--slate-200);
     }
 
-    h4 {
+    /* Multiselect */
+    .stMultiSelect [data-baseweb="tag"] {
+        background-color: var(--teal-50);
+        color: var(--teal-900);
+        border-radius: var(--radius);
         font-size: 0.875rem;
-        font-weight: 600;
-        color: var(--primary);
-        margin-top: 1.5rem;
-        margin-bottom: 0.75rem;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-    }
-
-    /* Dataframes limpos */
-    .dataframe {
-        font-size: 0.875rem;
-        border: 1px solid var(--border);
     }
     </style>
 """, unsafe_allow_html=True)
@@ -273,11 +397,11 @@ else:
 # ==================== COMPARAÇÃO DE PERÍODOS ====================
 st.sidebar.markdown("---")
 st.sidebar.markdown("""
-    <div style='border-left: 3px solid #667eea; padding-left: 1rem; margin-bottom: 1rem;'>
-        <h4 style='margin: 0 0 0.25rem 0; font-size: 0.875rem; font-weight: 600; color: #2c3e50;'>
+    <div style='border-left: 3px solid var(--teal-600); padding-left: 1rem; margin-bottom: 1rem;'>
+        <h4 style='margin: 0 0 0.25rem 0; font-size: 0.875rem; font-weight: 600; color: var(--slate-900);'>
             Comparação de Períodos
         </h4>
-        <p style='margin: 0; font-size: 0.75rem; color: #7f8c8d;'>
+        <p style='margin: 0; font-size: 0.75rem; color: var(--slate-500);'>
             Compare dois períodos diferentes
         </p>
     </div>
@@ -449,12 +573,28 @@ with tab2:
             col_idx = idx % 4 if num_parceiros > 4 else idx
             with cols[col_idx]:
                 st.markdown(f"""
-                <div style='background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                            padding: 1.5rem; border-radius: 10px; color: white; text-align: center;'>
-                    <h3 style='margin: 0; font-size: 1.5rem;'>{row['Parceiro']}</h3>
-                    <p style='font-size: 2rem; font-weight: bold; margin: 0.5rem 0;'>R$ {row['Volume Total']:,.0f}</p>
-                    <p style='margin: 0; opacity: 0.9;'>{int(row['Operações']):,} operações</p>
-                    <p style='margin: 0; opacity: 0.9;'>Margem: {row['Margem %']:.2f}%</p>
+                <div style='background: white;
+                            border: 1px solid var(--slate-200);
+                            border-radius: var(--radius-2xl);
+                            padding: 1.5rem;
+                            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+                            transition: all 0.3s ease;
+                            text-align: center;'>
+                    <div style='width: 3.5rem; height: 3.5rem; margin: 0 auto 1rem;
+                                background: linear-gradient(135deg, var(--teal-500) 0%, var(--emerald-500) 100%);
+                                border-radius: var(--radius-2xl);
+                                display: flex; align-items: center; justify-content: center;
+                                box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);'>
+                        <span style='color: white; font-size: 1.5rem; font-weight: 600;'>{row['Parceiro'][0]}</span>
+                    </div>
+                    <h3 style='margin: 0 0 0.5rem 0; font-size: 1rem; font-weight: 600; color: var(--slate-900);'>{row['Parceiro']}</h3>
+                    <p style='font-size: 1.5rem; font-weight: 600; margin: 0.25rem 0; color: var(--slate-900);'>R$ {row['Volume Total']:,.0f}</p>
+                    <p style='margin: 0.25rem 0; font-size: 0.875rem; color: var(--slate-500);'>{int(row['Operações']):,} operações</p>
+                    <div style='display: inline-flex; align-items: center; gap: 0.25rem; margin-top: 0.5rem;
+                                padding: 0.25rem 0.75rem; border-radius: var(--radius); font-size: 0.875rem;
+                                background: var(--emerald-50); color: var(--emerald-700);'>
+                        <span>Margem: {row['Margem %']:.2f}%</span>
+                    </div>
                 </div>
                 """, unsafe_allow_html=True)
 
@@ -471,7 +611,7 @@ with tab2:
                 y='Volume Total',
                 color='Parceiro',
                 text='Volume Total',
-                color_discrete_sequence=px.colors.qualitative.Set3
+                color_discrete_sequence=['#14b8a6', '#10b981', '#0d9488', '#059669', '#0f766e']
             )
             fig_volume_parceiro.update_traces(texttemplate='R$ %{text:,.0f}', textposition='outside')
             fig_volume_parceiro.update_layout(
@@ -490,7 +630,7 @@ with tab2:
                 y='Operações',
                 color='Parceiro',
                 text='Operações',
-                color_discrete_sequence=px.colors.qualitative.Pastel
+                color_discrete_sequence=['#14b8a6', '#10b981', '#0d9488', '#059669', '#0f766e']
             )
             fig_ops_parceiro.update_traces(texttemplate='%{text:,}', textposition='outside')
             fig_ops_parceiro.update_layout(
@@ -512,7 +652,7 @@ with tab2:
                 y='Ticket Médio',
                 color='Ticket Médio',
                 text='Ticket Médio',
-                color_continuous_scale='Blues'
+                color_continuous_scale=[[0, '#ccfbf1'], [0.5, '#14b8a6'], [1, '#0d9488']]
             )
             fig_ticket_parceiro.update_traces(texttemplate='R$ %{text:,.0f}', textposition='outside')
             fig_ticket_parceiro.update_layout(
@@ -531,7 +671,7 @@ with tab2:
                 y='Margem %',
                 color='Margem %',
                 text='Margem %',
-                color_continuous_scale='Greens'
+                color_continuous_scale=[[0, '#ecfdf5'], [0.5, '#10b981'], [1, '#059669']]
             )
             fig_margem_parceiro.update_traces(texttemplate='%{text:.2f}%', textposition='outside')
             fig_margem_parceiro.update_layout(
@@ -783,7 +923,7 @@ with tab1:
                 orientation='h',
                 labels={'x': 'Volume (R$)', 'y': 'Parceiro'},
                 color=parceiro_volume.values,
-                color_continuous_scale='Blues'
+                color_continuous_scale=[[0, '#ccfbf1'], [0.5, '#14b8a6'], [1, '#0d9488']]
             )
             fig_parceiros.update_layout(
                 showlegend=False,
@@ -804,7 +944,7 @@ with tab1:
             fig_ops_pie = px.pie(
                 values=ops_counts.values,
                 names=ops_counts.index,
-                color_discrete_sequence=px.colors.qualitative.Set3,
+                color_discrete_sequence=['#14b8a6', '#10b981', '#0d9488', '#059669', '#0f766e'],
                 hole=0.4
             )
             fig_ops_pie.update_layout(
@@ -829,9 +969,9 @@ with tab1:
             markers=True
         )
         fig_time.update_traces(
-            line_color='#667eea',
+            line_color='#14b8a6',
             line_width=3,
-            marker=dict(size=8),
+            marker=dict(size=8, color='#14b8a6'),
             hovertemplate='<b>%{x|%b/%Y}</b><br>Volume: R$ %{y:,.2f}<extra></extra>'
         )
         fig_time.update_layout(
@@ -869,9 +1009,10 @@ with tab3:
             y=time_agg['volume'],
             mode='lines+markers',
             name='Volume',
-            line=dict(color='#667eea', width=3),
+            line=dict(color='#14b8a6', width=3),
             fill='tozeroy',
-            fillcolor='rgba(102, 126, 234, 0.2)'
+            fillcolor='rgba(20, 184, 166, 0.2)',
+            marker=dict(color='#14b8a6')
         ))
 
         fig_volume_time.update_layout(
@@ -894,7 +1035,7 @@ with tab3:
                 x='data',
                 y='operacoes',
                 color='operacoes',
-                color_continuous_scale='Blues'
+                color_continuous_scale=[[0, '#ccfbf1'], [0.5, '#14b8a6'], [1, '#0d9488']]
             )
             fig_ops.update_layout(
                 height=350,
@@ -911,7 +1052,7 @@ with tab3:
                 y='ticket_medio',
                 markers=True
             )
-            fig_ticket.update_traces(line_color='#ff7f0e', line_width=3)
+            fig_ticket.update_traces(line_color='#10b981', line_width=3, marker=dict(color='#10b981'))
             fig_ticket.update_layout(
                 height=350,
                 margin=dict(l=0, r=0, t=30, b=0)
@@ -923,13 +1064,13 @@ with tab3:
         fig_compare = make_subplots(specs=[[{"secondary_y": True}]])
 
         fig_compare.add_trace(
-            go.Bar(x=time_agg['data'], y=time_agg['volume'], name='Volume', marker_color='#667eea'),
+            go.Bar(x=time_agg['data'], y=time_agg['volume'], name='Volume', marker_color='#14b8a6'),
             secondary_y=False
         )
 
         fig_compare.add_trace(
             go.Scatter(x=time_agg['data'], y=time_agg['receita'], name='Receita CF',
-                      mode='lines+markers', line=dict(color='#2ca02c', width=3)),
+                      mode='lines+markers', line=dict(color='#10b981', width=3), marker=dict(color='#10b981')),
             secondary_y=True
         )
 
@@ -1028,7 +1169,7 @@ with tab5:
                 x='Categoria',
                 y='Valor',
                 color='Categoria',
-                color_discrete_sequence=['#667eea', '#ff7f0e', '#2ca02c']
+                color_discrete_sequence=['#14b8a6', '#10b981', '#059669']
             )
             fig_valores.update_layout(
                 height=350,
@@ -1048,7 +1189,7 @@ with tab5:
                 y='total_receita_cashforce',
                 markers=True
             )
-            fig_receita.update_traces(line_color='#2ca02c', line_width=3)
+            fig_receita.update_traces(line_color='#10b981', line_width=3, marker=dict(color='#10b981'))
             fig_receita.update_layout(
                 height=350,
                 xaxis_title="Competência",
