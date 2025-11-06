@@ -6,6 +6,7 @@ import pandas as pd
 from pandas.api.types import is_datetime64tz_dtype
 import plotly.express as px
 import streamlit as st
+from streamlit.components.v1 import html
 from dotenv import load_dotenv
 from supabase import create_client
 
@@ -402,11 +403,16 @@ max_date = (max_competencia + pd.offsets.MonthEnd(0)).date() if not pd.isna(max_
 header_col1, header_col2, header_col3 = st.columns([1, 2, 2])
 
 with header_col1:
-    st.markdown(f"""
-        <a href="https://cashforce.com.br" target="_blank" style="margin-top: 10px; display: block;">
-            <img src="{LOGO_URL}" alt="Cashforce Logo" width="200">
-        </a>
-    """, unsafe_allow_html=True)
+    html(
+        f"""
+        <div style="margin-top: 10px; display: inline-block; cursor: pointer;"
+             title="Voltar para a aba Overview"
+             onclick="const firstTab = window.parent.document.querySelector('button[role=\\'tab\\']'); if (firstTab) {{ firstTab.click(); }}">
+            <img src="{LOGO_URL}" alt="Cashforce Logo" width="200" style="display: block;" />
+        </div>
+        """,
+        height=80,
+    )
 
 with header_col2:
     st.write("")
