@@ -471,9 +471,13 @@ with overview_tab:
 
     # KPIs da View Agregada (Rápidos)
     volume_total = df_filtered["total_bruto_duplicata"].sum()
-    total_propostas = df_filtered.get("total_propostas", pd.Series(dtype=float)).sum()
-    total_nfids = df_filtered["total_nf_transportadas"].sum()
-    total_duplicatas = df_filtered["quantidade_operacoes"].sum()
+    total_propostas = (
+        df_base_filtered["numero_proposta"].dropna().nunique() if not df_base_filtered.empty else 0
+    )
+    total_nfids = (
+        df_base_filtered["nfid"].dropna().nunique() if not df_base_filtered.empty else 0
+    )
+    total_duplicatas = len(df_base_filtered) if not df_base_filtered.empty else 0
     grupos_ativos = df_filtered["grupo_economico"].dropna().nunique()
     
     # KPIs da Tabela Base (Processamento Ponderado)
