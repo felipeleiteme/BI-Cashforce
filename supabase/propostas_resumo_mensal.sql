@@ -23,6 +23,7 @@ select
     coalesce(sum(valor_bruto_duplicata), 0)::numeric(18,2) as total_bruto_duplicata,
     coalesce(sum(valor_liquido_duplicata), 0)::numeric(18,2) as total_liquido_duplicata,
     coalesce(sum(receita_cashforce), 0)::numeric(18,2) as total_receita_cashforce,
+    coalesce(count(distinct numero_proposta), 0)::int as total_propostas,
 
     -- Médias (Novos KPIs)
     coalesce(avg(taxa_efetiva_mes_percentual), 0)::numeric(8,4) as taxa_efetiva_media,
@@ -35,7 +36,7 @@ with no data;
 
 -- 2. Índices para suportar refresh concorrente e filtros
 create unique index if not exists propostas_resumo_mensal_mv_uq
-    on public.propostas_resumo_mensal_mv (competencia_id, grupo_economico, razao_social_comprador, parceiro, razao_social_financiador); -- ADICIONADO FINANCIADOR
+    on public.propostas_resumo_mensal_mv (competencia_id, grupo_economico, razao_social_comprador, parceiro, razao_social_financiador);
 
 create index if not exists propostas_resumo_mensal_mv_competencia_idx
     on public.propostas_resumo_mensal_mv (competencia desc);
