@@ -158,7 +158,7 @@ st.markdown(
 )
 
 # --- 3. CONSTANTES DE CORES E LOGO ---
-LOGO_URL = "https://i.ibb.co/0p8WS2M/logo-cashforce.png"
+LOGO_URL = "https://i.ibb.co/0p8WS2MV/logo-cashforce.png"
 BRAND_COLOR_SCALE_PRIMARY = ["#00D98E", "#00B876", "#030213", "#5A6872", "#A9B5BE"]
 BRAND_COLOR_SCALE_CONTINUOUS = [[0, "#F0FFF9"], [0.5, "#00D98E"], [1, "#00B876"]]
 
