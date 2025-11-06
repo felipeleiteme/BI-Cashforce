@@ -149,12 +149,8 @@ st.markdown(
          box-shadow: 0 0 0 1px var(--brand-green) !important;
     }
     
-    /* Remove Header e Footer padrões do Streamlit */
-    #MainMenu {visibility: hidden;}
+    /* Mantém footer discreto */
     footer {visibility: hidden;}
-    
-    /* Oculta o header de "running..." */
-    header {visibility: hidden;}
     
     </style>
     """,
@@ -363,11 +359,7 @@ with header_col1:
     """, unsafe_allow_html=True)
 
 with header_col2:
-    st.markdown("""
-        <h1 style='margin: 0; font-size: 1.75rem; font-weight: 500; color: var(--brand-dark-blue); margin-top: 20px;'>
-            BI Painel Executivo
-        </h1>
-    """, unsafe_allow_html=True)
+    st.write("")
 
 with header_col3:
     # Filtro de data movido da sidebar para o header
