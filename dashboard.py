@@ -540,7 +540,9 @@ with overview_tab:
         df_base_filtered["nfid"].dropna().nunique() if not df_base_filtered.empty else 0
     )
     total_duplicatas = len(df_base_filtered) if not df_base_filtered.empty else 0
-    grupos_ativos = df_filtered["grupo_economico"].dropna().nunique()
+    grupos_ativos = (
+        df_base_filtered["grupo_economico"].dropna().nunique() if not df_base_filtered.empty else 0
+    )
     
     # KPIs da Tabela Base (Processamento Ponderado)
     sacados_ativos = (
