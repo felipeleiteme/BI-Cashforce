@@ -468,7 +468,21 @@ if selected_financiadores:
     df_filtered = df_filtered[df_filtered["razao_social_financiador"].isin(selected_financiadores)]
 
 if df_filtered.empty:
-    st.warning("Nenhum dado encontrado para os filtros selecionados.")
+    scope_df = df_view.copy()
+    if selected_parceiros:
+        scope_df = scope_df[scope_df["parceiro"].isin(selected_parceiros)]
+    if selected_financiadores:
+        scope_df = scope_df[scope_df["razao_social_financiador"].isin(selected_financiadores)]
+
+    if scope_df.empty:
+        st.warning("Nenhum dado disponível para os parceiros/financiadores selecionados em qualquer período.")
+    else:
+        min_scope = scope_df["competencia"].min()
+        max_scope = scope_df["competencia"].max()
+        periodo_disp = f"{min_scope.strftime('%m/%Y')} — {max_scope.strftime('%m/%Y')}" if not pd.isna(min_scope) and not pd.isna(max_scope) else "período desconhecido"
+        st.warning(
+            f"Sem dados no intervalo escolhido. Este recorte possui informações apenas entre {periodo_disp}."
+        )
     st.stop()
 
 # Otimização: Carrega dados base SOMENTE com os filtros globais aplicados
