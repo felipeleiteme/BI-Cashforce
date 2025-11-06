@@ -432,6 +432,22 @@ with overview_tab:
     fig_volume.update_layout(showlegend=False)
     st.plotly_chart(fig_volume, use_container_width=True)
 
+    with st.expander("Ver dados absolutos da Série Histórica (Valores Absolutos por Mês)"):
+        st.caption("Estes são os valores absolutos pré-calculados que alimentam o gráfico acima.")
+        dados_grafico = volume_timeline.copy()
+        dados_grafico["competencia"] = dados_grafico["competencia"].dt.strftime("%Y-%m (%b)")
+        dados_grafico["total_bruto_duplicata"] = dados_grafico["total_bruto_duplicata"].map(format_currency)
+        st.dataframe(
+            dados_grafico.rename(
+                columns={
+                    "competencia": "Competência",
+                    "total_bruto_duplicata": "Volume Absoluto (R$)",
+                }
+            ),
+            use_container_width=True,
+            hide_index=True,
+        )
+
     col_a, col_b = st.columns(2)
 
     if not df_base_filtered.empty:
