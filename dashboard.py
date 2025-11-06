@@ -549,16 +549,19 @@ with clients_tab:
                 .reset_index(name="novos_sacados")
                 .rename(columns={"index": "competencia"})
             )
-            fig_novos = px.bar(
-                novos_sacados,
-                x="competencia",
-                y="novos_sacados",
-                labels={"novos_sacados": "Novos Sacados", "competencia": "Competência"},
-                color="novos_sacados",
-                color_continuous_scale="teal",
-            )
-            fig_novos.update_layout(coloraxis_showscale=False)
-            st.plotly_chart(fig_novos, use_container_width=True)
+            if not novos_sacados.empty and {"competencia", "novos_sacados"}.issubset(novos_sacados.columns):
+                fig_novos = px.bar(
+                    novos_sacados,
+                    x="competencia",
+                    y="novos_sacados",
+                    labels={"novos_sacados": "Novos Sacados", "competencia": "Competência"},
+                    color="novos_sacados",
+                    color_continuous_scale="teal",
+                )
+                fig_novos.update_layout(coloraxis_showscale=False)
+                st.plotly_chart(fig_novos, use_container_width=True)
+            else:
+                st.info("Sem dados para calcular novos sacados.")
         else:
             st.info("Sem dados para calcular novos sacados.")
 
