@@ -659,27 +659,43 @@ with clients_tab:
                 .groupby("cnpj_comprador")["data_operacao"]
                 .min()
             )
-            novos_sacados = (
-                sacados_first_seen.dt.to_period("M")
-                .value_counts()
-                .sort_index()
-                .to_timestamp()
-                .reset_index(name="novos_sacados")
-                .rename(columns={"index": "competencia"})
-            )
-            if not novos_sacados.empty and {"competencia", "novos_sacados"}.issubset(novos_sacados.columns):
-                fig_novos = px.bar(
-                    novos_sacados,
-                    x="competencia",
-                    y="novos_sacados",
-                    labels={"novos_sacados": "Novos Sacados", "competencia": "Competência"},
-                    color="novos_sacados",
-                    color_continuous_scale=BRAND_COLOR_SCALE_CONTINUOUS,
-                )
-                fig_novos.update_layout(coloraxis_showscale=False)
-                st.plotly_chart(fig_novos, use_container_width=True)
+
+            if sacados_first_seen.empty:
+                st.info("Nenhum sacado novo identificado no período selecionado.")
             else:
-                st.info("Sem dados para calcular novos sacados.")
+                novos_sacados = (
+                    sacados_first_seen.dt.to_period("M")
+                    .value_counts()
+                    .sort_index()
+                    .rename_axis("competencia_period")
+                    .to_frame("novos_sacados")
+                )
+
+                period_range = pd.period_range(
+                    start=pd.Period(start_date, freq="M"),
+                    end=pd.Period(end_date, freq="M"),
+                )
+
+                novos_sacados = (
+                    novos_sacados.reindex(period_range, fill_value=0)
+                    .reset_index()
+                    .rename(columns={"index": "competencia_period"})
+                )
+                novos_sacados["competencia"] = novos_sacados["competencia_period"].dt.to_timestamp()
+
+                if novos_sacados["novos_sacados"].sum() == 0:
+                    st.info("Nenhum sacado novo identificado no período selecionado.")
+                else:
+                    fig_novos = px.bar(
+                        novos_sacados,
+                        x="competencia",
+                        y="novos_sacados",
+                        labels={"novos_sacados": "Novos Sacados", "competencia": "Competência"},
+                        color="novos_sacados",
+                        color_continuous_scale=BRAND_COLOR_SCALE_CONTINUOUS,
+                    )
+                    fig_novos.update_layout(coloraxis_showscale=False)
+                    st.plotly_chart(fig_novos, use_container_width=True)
         else:
             st.info("Sem dados operacionais para calcular novos sacados.")
 
