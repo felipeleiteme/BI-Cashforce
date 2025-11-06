@@ -97,31 +97,34 @@ st.markdown(
 
     /* --- INÍCIO: Correção Cores DatePicker (Branding Cashforce) --- */
 
+    [data-baseweb="calendar"] .CalendarDay__selected,
+    [data-baseweb="calendar"] .CalendarDay__selected:hover,
+    [data-baseweb="calendar"] .CalendarDay__selected_span,
+    [data-baseweb="calendar"] .CalendarDay__selected_span:hover,
     [data-baseweb="calendar"] .CalendarDay--selected,
     [data-baseweb="calendar"] .CalendarDay--selected:hover {
         background-color: var(--brand-green) !important;
         color: var(--brand-dark-blue) !important;
         border-radius: 50% !important;
+        border: none !important;
     }
 
-    [data-baseweb="calendar"] .CalendarDay--selected-start,
-    [data-baseweb="calendar"] .CalendarDay--selected-end {
-        background-color: var(--brand-green) !important;
-        color: var(--brand-dark-blue) !important;
+    [data-baseweb="calendar"] .CalendarDay__hovered_span,
+    [data-baseweb="calendar"] .CalendarDay__hovered_span:hover,
+    [data-baseweb="calendar"] .CalendarDay--hovered,
+    [data-baseweb="calendar"] .CalendarDay--hovered:hover {
+        background-color: var(--brand-green-light) !important;
+        color: var(--brand-green-dark) !important;
         border-radius: 50% !important;
+        border: none !important;
     }
 
+    [data-baseweb="calendar"] .CalendarDay__selected_span,
     [data-baseweb="calendar"] .CalendarDay--selected-range {
         background-color: var(--brand-green-light) !important;
         color: var(--brand-green-dark) !important;
         border: none !important;
         border-radius: 0 !important;
-    }
-
-    [data-baseweb="calendar"] .CalendarDay:hover {
-        background-color: var(--brand-green-light) !important;
-        color: var(--brand-green-dark) !important;
-        border-radius: 50% !important;
     }
 
     /* --- FIM: Correção Cores DatePicker --- */
