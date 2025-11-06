@@ -571,12 +571,17 @@ with overview_tab:
     if not ritmo_projetado:
         st.caption("ℹ️ Ritmo ainda não atualizado. Execute o ETL para puxar os valores da planilha de Ritmo.")
 
-    col6, col7, col8, col9, col10 = st.columns(5)
+    col6, col7, col8, col9, col10, col11 = st.columns(6)
     col6.metric("Grupos Econômicos Ativos", format_integer(grupos_ativos))
     col7.metric("Sacados Ativos (CNPJs)", format_integer(sacados_ativos))
     col8.metric("Fornecedores Ativos (CNPJs)", format_integer(fornecedores_ativos))
     col9.metric("Prazo Médio Ponderado", format_duration(prazo_medio))
     col10.metric("Taxa Efetiva Média", format_percent(taxa_media))
+    col11.metric(
+        "Dias Restantes no Mês",
+        dias_restantes_text,
+        help=f"Atualizado em {updated_at_display} UTC",
+    )
 
     st.markdown("### Evolução do Volume Operado (VOP)")
     volume_timeline = (
@@ -704,7 +709,9 @@ with overview_tab:
 
 
 with clients_tab:
-    sacados_tab, fornecedores_tab = st.tabs(["🏢 Sacados (Compradores)", "🚚 Fornecedores (Cedentes)"])
+    sacados_tab, fornecedores_tab, parceiros_tab = st.tabs(
+        ["🏢 Sacados (Compradores)", "🚚 Fornecedores (Cedentes)", "🤝 Parceiros (Canais)"]
+    )
 
     with sacados_tab:
         st.subheader("Sacados · Engajamento dos Compradores")
@@ -861,6 +868,73 @@ with clients_tab:
             st.dataframe(fornecedores_por_grupo, use_container_width=True)
         else:
             st.info("Não há combinação de fornecedor por grupo para exibir.")
+
+    with parceiros_tab:
+        st.subheader("Performance por Parceiro (Canal)")
+
+        if df_base_filtered.empty:
+            st.info("Não foi possível carregar dados operacionais. Ajuste os filtros principais.")
+        else:
+            st.markdown("### Tabela de Performance por Parceiro")
+            st.caption("Visão agregada por Parceiro, recriando a tabela principal do relatório anterior.")
+
+            parceiros_com_dados = df_base_filtered.dropna(subset=["parceiro"])
+            if parceiros_com_dados.empty:
+                st.info("Nenhum parceiro com operações no recorte selecionado.")
+            else:
+                df_parceiro_agg = (
+                    parceiros_com_dados.groupby("parceiro")
+                    .agg(
+                        volume_bruto=("valor_bruto_duplicata", "sum"),
+                        n_compradores=("cnpj_comprador", "nunique"),
+                        n_propostas=("numero_proposta", "nunique"),
+                        n_duplicatas=("nfid", "count"),
+                        prazo_medio_pond=(
+                            "prazo_medio_operacao",
+                            lambda x: weighted_average(
+                                x,
+                                df_base_filtered.loc[x.index, "valor_bruto_duplicata"],
+                            ),
+                        ),
+                        taxa_media_pond=(
+                            "taxa_efetiva_mes_percentual",
+                            lambda x: weighted_average(
+                                x,
+                                df_base_filtered.loc[x.index, "valor_bruto_duplicata"],
+                            ),
+                        ),
+                    )
+                    .reset_index()
+                )
+
+                df_parceiro_agg["ticket_medio"] = df_parceiro_agg["volume_bruto"] / df_parceiro_agg["n_propostas"].replace(0, np.nan)
+                df_parceiro_agg = df_parceiro_agg.sort_values("volume_bruto", ascending=False)
+
+                df_parceiro_agg_display = df_parceiro_agg.rename(
+                    columns={
+                        "parceiro": "Parceiro",
+                        "volume_bruto": "Volume (VOP)",
+                        "n_compradores": "Nº Sacados",
+                        "n_propostas": "Nº Propostas",
+                        "n_duplicatas": "Nº Duplicatas",
+                        "ticket_medio": "Ticket Médio",
+                        "prazo_medio_pond": "Prazo Médio",
+                        "taxa_media_pond": "Taxa Média %",
+                    }
+                )
+
+                st.dataframe(
+                    df_parceiro_agg_display.assign(
+                        **{
+                            "Volume (VOP)": df_parceiro_agg_display["Volume (VOP)"].map(format_currency),
+                            "Ticket Médio": df_parceiro_agg_display["Ticket Médio"].map(format_currency),
+                            "Prazo Médio": df_parceiro_agg_display["Prazo Médio"].map(format_duration),
+                            "Taxa Média %": df_parceiro_agg_display["Taxa Média %"].map(format_percent),
+                        }
+                    ),
+                    use_container_width=True,
+                    hide_index=True,
+                )
 
 
 with funding_tab:
