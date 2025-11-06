@@ -10,124 +10,159 @@ from supabase import create_client
 
 load_dotenv()
 
+# --- 1. CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(
     layout="wide",
     page_title="BI Cashforce | Dashboard Executivo",
-    page_icon="■",
+    page_icon="https://cashforce.com.br/wp-content/uploads/2022/04/cropped-favicon-32x32.png",  # Favicon da Cashforce
     initial_sidebar_state="expanded",
 )
 
+# --- 2. CSS CUSTOMIZADO (BRANDING CASHFORCE) ---
+# Aqui aplicamos a identidade visual da Cashforce
 st.markdown(
     """
     <style>
+    /* --- Paleta de Cores Cashforce --- */
     :root {
         --font-size: 16px;
-        --background: #ffffff;
-        --foreground: #24292f;
-        --primary: #030213;
-        --primary-foreground: #ffffff;
-        --muted: #ececf0;
-        --muted-foreground: #717182;
-        --border: rgba(0, 0, 0, 0.1);
-        --teal-50: #f0fdfa;
-        --teal-200: #99f6e4;
-        --teal-500: #14b8a6;
-        --teal-600: #0d9488;
-        --teal-700: #0f766e;
-        --emerald-500: #10b981;
-        --emerald-600: #059669;
-        --slate-50: #f8fafc;
-        --slate-200: #e2e8f0;
-        --slate-500: #64748b;
-        --slate-600: #475569;
-        --slate-700: #334155;
-        --slate-900: #0f172a;
-        --radius: 0.625rem;
-        --radius-2xl: 1rem;
-        --font-weight-medium: 500;
-        --font-weight-normal: 400;
+        --brand-green: #00D98E;
+        --brand-green-dark: #00B876;
+        --brand-green-light: #F0FFF9;
+        --brand-dark-blue: #030213;
+        --brand-text: #333333;
+        --brand-text-light: #555555;
+        --brand-bg: #FFFFFF;
+        --brand-bg-muted: #F8FAFC;
+        --brand-border: #E5E7EB;
+
+        /* Override Streamlit Globals */
+        --primary-color: var(--brand-green);
+        --text-color: var(--brand-text);
+        --background-color: var(--brand-bg);
+        --secondary-background-color: var(--brand-bg-muted);
+        --font: "ui-sans-serif", "Inter", "system-ui", "sans-serif";
     }
 
     * {
-        font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        font-family: var(--font);
     }
 
     html {
         font-size: var(--font-size);
     }
 
+    /* --- Layout Principal --- */
     .stApp {
-        background: linear-gradient(135deg, var(--slate-50) 0%, rgba(240, 253, 250, 0.2) 50%, var(--slate-50) 100%);
+        background: var(--brand-bg); /* Fundo branco sólido */
     }
 
+    /* --- Sidebar --- */
     [data-testid="stSidebar"] {
-        background-color: var(--slate-50);
-        border-right: 1px solid var(--border);
+        background-color: var(--brand-bg-muted);
+        border-right: 1px solid var(--brand-border);
+    }
+    
+    [data-testid="stSidebar"] h2 {
+        font-size: 1.5rem;
+        color: var(--brand-dark-blue);
+    }
+    
+    [data-testid="stSidebar"] h3 {
+        font-size: 1rem;
+        color: var(--brand-dark-blue);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        font-weight: 600;
     }
 
+    /* --- Abas (Tabs) --- */
     [data-testid="stTabs"] [data-baseweb="tab"] {
-        font-weight: var(--font-weight-medium);
-        color: var(--slate-600);
+        font-weight: 500;
+        color: var(--brand-text-light);
         padding: 0.75rem 1.5rem;
         border-bottom: 2px solid transparent;
     }
 
     [data-testid="stTabs"] [aria-selected="true"] {
-        color: var(--teal-700);
-        border-bottom: 2px solid var(--teal-600);
+        color: var(--brand-green-dark);
+        border-bottom: 2px solid var(--brand-green);
         background: transparent;
     }
 
+    /* --- Cards de KPI (Metrics) --- */
     [data-testid="stMetric"] {
-        background: #fff;
-        border: 1px solid var(--slate-200);
-        border-radius: var(--radius-2xl);
+        background: var(--brand-bg);
+        border: 1px solid var(--brand-border);
+        border-radius: 1rem; /* 16px */
         padding: 1.5rem;
-        box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+        box-shadow: 0 1px 3px rgba(15, 23, 42, 0.03);
     }
 
     [data-testid="stMetric"]:hover {
-        box-shadow: 0 20px 25px -5px rgba(15, 23, 42, 0.1), 0 10px 10px -5px rgba(15, 23, 42, 0.04);
+        border-color: var(--brand-green);
+        box-shadow: 0 10px 15px -3px rgba(15, 23, 42, 0.05);
     }
 
     [data-testid="stMetricValue"] {
         font-size: 1.5rem;
-        color: var(--slate-900);
+        color: var(--brand-dark-blue);
+        font-weight: 600;
     }
 
     [data-testid="stMetricLabel"] {
         font-size: 0.875rem;
-        color: var(--slate-500);
+        color: var(--brand-text-light);
+        font-weight: 500;
     }
 
+    /* --- Gráficos (Plotly) --- */
     .js-plotly-plot {
-        border-radius: var(--radius-2xl);
-        background: #fff;
-        border: 1px solid var(--slate-200);
+        border-radius: 1rem;
+        background: var(--brand-bg);
+        border: 1px solid var(--brand-border);
         padding: 1rem;
     }
 
-    .stButton > button {
-        background: linear-gradient(135deg, var(--teal-500) 0%, var(--emerald-500) 100%);
-        color: #fff;
-        border-radius: var(--radius);
-        border: none;
-        font-weight: var(--font-weight-medium);
-        padding: 0.5rem 1.5rem;
+    /* --- Inputs (Remove Laranja/Vermelho) --- */
+    
+    /* Multiselect Tags (Parceiros, Financiadores) */
+    [data-testid="stMultiSelect"] [data-baseweb="tag"] {
+        background-color: var(--brand-green-light);
+        color: var(--brand-green-dark);
+        border: 1px solid var(--brand-green);
+        border-radius: 0.5rem;
     }
 
-    .stButton > button:hover {
-        background: linear-gradient(135deg, var(--teal-600) 0%, var(--emerald-600) 100%);
+    /* DateInput Borda */
+    [data-testid="stDateInput"] div[data-baseweb="input"] {
+        border-color: var(--brand-border);
+        border-radius: 0.5rem;
     }
-
+    [data-testid="stDateInput"] div[data-baseweb="input"]:focus-within {
+         border-color: var(--brand-green) !important;
+         box-shadow: 0 0 0 1px var(--brand-green) !important;
+    }
+    
+    /* Remove Header e Footer padrões do Streamlit */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
+    
+    /* Oculta o header de "running..." */
+    header {visibility: hidden;}
+    
     </style>
     """,
     unsafe_allow_html=True,
 )
 
+# --- 3. CONSTANTES DE CORES E LOGO ---
+LOGO_URL = "https://cashforce.com.br/wp-content/themes/cashforce/assets/img/logo-dark.svg"
+BRAND_COLOR_SCALE_PRIMARY = ["#00D98E", "#00B876", "#030213", "#5A6872", "#A9B5BE"]
+BRAND_COLOR_SCALE_CONTINUOUS = [[0, "#F0FFF9"], [0.5, "#00D98E"], [1, "#00B876"]]
 
+
+# --- 4. CONEXÃO SUPABASE (Cache) ---
 try:
     SUPABASE_URL = st.secrets.get("SUPABASE_URL", os.getenv("SUPABASE_URL"))
     SUPABASE_KEY = st.secrets.get("SUPABASE_ANON_KEY", os.getenv("SUPABASE_ANON_KEY"))
@@ -147,6 +182,7 @@ def get_supabase_client():
 supabase = get_supabase_client()
 
 
+# --- 5. FUNÇÕES DE CARREGAMENTO DE DADOS ---
 def _fetch_paginated(table_name: str, select: str, apply_filters=None, page_size: int = 1000):
     rows = []
     start = 0
@@ -261,6 +297,7 @@ def load_base_data(
         return pd.DataFrame()
 
 
+# --- 6. FUNÇÕES HELPER DE FORMATAÇÃO ---
 def format_currency(value: float | None) -> str:
     if value is None or pd.isna(value):
         return "—"
@@ -295,6 +332,7 @@ def format_duration(value: float | None) -> str:
     return f"{value:.1f} dias"
 
 
+# --- 7. CARGA DE DADOS INICIAL ---
 df_view = load_view_data()
 if df_view.empty:
     st.error("Nenhum dado disponível na view `propostas_resumo_mensal`.")
@@ -306,29 +344,42 @@ max_competencia = df_view["competencia"].max()
 min_date = min_competencia.date() if not pd.isna(min_competencia) else datetime.now().date() - timedelta(days=365)
 max_date = (max_competencia + pd.offsets.MonthEnd(0)).date() if not pd.isna(max_competencia) else datetime.now().date()
 
-st.markdown(
-    """
-    <div style='padding: 1.5rem 0 1rem 0; border-bottom: 1px solid var(--border); margin-bottom: 2rem;'>
-        <h1 style='margin: 0; font-size: 1.75rem; font-weight: 500; color: var(--primary);'>
-            BI Cashforce · Painel Executivo
+
+# --- 8. LAYOUT DO HEADER (Logo + Título + Filtro de Data) ---
+# Esta é a implementação da sua sugestão no vídeo
+
+header_col1, header_col2, header_col3 = st.columns([1, 2, 2])
+
+with header_col1:
+    st.markdown(f"""
+        <a href="https://cashforce.com.br" target="_blank" style="margin-top: 10px; display: block;">
+            <img src="{LOGO_URL}" alt="Cashforce Logo" width="200">
+        </a>
+    """, unsafe_allow_html=True)
+
+with header_col2:
+    st.markdown("""
+        <h1 style='margin: 0; font-size: 1.75rem; font-weight: 500; color: var(--brand-dark-blue); margin-top: 20px;'>
+            BI Painel Executivo
         </h1>
-        <p style='margin: 0.5rem 0 0 0; color: var(--slate-600); font-size: 0.95rem;'>
-            Visão consolidada das operações. Use os filtros laterais para ajustar o contexto de análise.
-        </p>
-    </div>
-    """,
-    unsafe_allow_html=True,
-)
+    """, unsafe_allow_html=True)
 
+with header_col3:
+    # Filtro de data movido da sidebar para o header
+    default_start = max(min_date, max_date - timedelta(days=90))
+    date_range = st.date_input(
+        "Período de Análise",
+        value=(default_start, max_date),
+        min_value=min_date,
+        max_value=max_date,
+        key="header_date_range"
+    )
+
+st.markdown("<hr style='border: none; height: 1px; background-color: var(--brand-border); margin: 1rem 0 2rem 0;'>", unsafe_allow_html=True)
+
+
+# --- 9. LAYOUT DA SIDEBAR (Outros Filtros) ---
 st.sidebar.header("Filtros")
-
-default_start = max(min_date, max_date - timedelta(days=90))
-date_range = st.sidebar.date_input(
-    "Período",
-    value=(default_start, max_date),
-    min_value=min_date,
-    max_value=max_date,
-)
 
 if isinstance(date_range, tuple) and len(date_range) == 2:
     start_date, end_date = date_range
@@ -338,22 +389,24 @@ else:
 if end_date > max_date:
     end_date = max_date
 
-st.sidebar.caption(f"📆 {start_date.strftime('%d/%m/%Y')} — {end_date.strftime('%d/%m/%Y')}")
+# Caption do período agora fica na sidebar
+st.sidebar.caption(f"Período selecionado: 📆 {start_date.strftime('%d/%m/%Y')} — {end_date.strftime('%d/%m/%Y')}")
 
 parceiros_options = sorted(df_view["parceiro"].dropna().unique().tolist())
 selected_parceiros = st.sidebar.multiselect(
-    "Parceiros",
+    "👥 Parceiros",
     options=parceiros_options,
     default=parceiros_options,
 )
 
 financiadores_options = sorted(df_view["razao_social_financiador"].dropna().unique().tolist())
 selected_financiadores = st.sidebar.multiselect(
-    "Financiadores",
+    "🏦 Financiadores",
     options=financiadores_options,
     default=financiadores_options,
 )
 
+# --- 10. FILTRAGEM E CARGA DE DADOS SECUNDÁRIA ---
 df_filtered = df_view.copy()
 df_filtered = df_filtered[
     (df_filtered["competencia"].dt.date >= start_date) & (df_filtered["competencia"].dt.date <= end_date)
@@ -368,26 +421,31 @@ if df_filtered.empty:
     st.warning("Nenhum dado encontrado para os filtros selecionados.")
     st.stop()
 
+# Otimização: Carrega dados base SOMENTE com os filtros globais aplicados
 df_base = load_base_data(start_date, end_date, tuple(selected_parceiros), tuple(selected_financiadores))
 if df_base.empty:
-    st.warning("Não foi possível carregar a tabela base de operações para análises detalhadas.")
+    st.warning("Não foi possível carregar as operações detalhadas para análises de clientes e explorador.")
 
 df_base_filtered = df_base
 
+
+# --- 11. LAYOUT DAS ABAS ---
 overview_tab, clients_tab, funding_tab, explorer_tab = st.tabs(
     ["🚀 Overview Estratégico", "👥 Análise de Clientes", "🏦 Análise de Funding", "🔍 Explorador Operacional"]
 )
 
 
 with overview_tab:
-    st.subheader("Visão Executiva · Estamos crescendo?")
+    st.subheader("Visão Executiva · Performance no Período")
 
+    # KPIs da View Agregada (Rápidos)
     volume_total = df_filtered["total_bruto_duplicata"].sum()
     total_operacoes = df_filtered["quantidade_operacoes"].sum()
     total_propostas = df_filtered.get("total_propostas", pd.Series(dtype=float)).sum()
     duplicatas_transacionadas = df_filtered["total_nf_transportadas"].sum()
-
     grupos_ativos = df_filtered["grupo_economico"].dropna().nunique()
+    
+    # KPIs da Tabela Base (Processamento Ponderado)
     sacados_ativos = (
         df_base_filtered["cnpj_comprador"].dropna().nunique() if not df_base_filtered.empty else None
     )
@@ -395,6 +453,7 @@ with overview_tab:
         df_base_filtered["cnpj_fornecedor"].dropna().nunique() if not df_base_filtered.empty else None
     )
 
+    # Otimização: KPIs de média agora usam a view agregada (mais rápido)
     prazo_medio = weighted_average(
         df_filtered.get("prazo_medio", pd.Series(dtype=float)),
         df_filtered.get("total_bruto_duplicata", pd.Series(dtype=float)),
@@ -404,9 +463,10 @@ with overview_tab:
         df_filtered.get("total_bruto_duplicata", pd.Series(dtype=float)),
     )
 
+    # Renderização dos KPIs
     col1, col2, col3, col4 = st.columns(4)
     col1.metric("Volume Operado (VOP)", format_currency(volume_total))
-    col2.metric("Duplicatas Transacionadas (NFIDs)", format_integer(duplicatas_transacionadas))
+    col2.metric("Duplicatas Transacionadas", format_integer(duplicatas_transacionadas))
     col3.metric("Total de Operações", format_integer(total_operacoes))
     col4.metric("Total de Propostas", format_integer(total_propostas))
 
@@ -414,10 +474,10 @@ with overview_tab:
     col5.metric("Grupos Econômicos Ativos", format_integer(grupos_ativos))
     col6.metric("Sacados Ativos (CNPJs)", format_integer(sacados_ativos))
     col7.metric("Fornecedores Ativos (CNPJs)", format_integer(fornecedores_ativos))
-    col8.metric("Prazo Médio", format_duration(prazo_medio))
+    col8.metric("Prazo Médio Ponderado", format_duration(prazo_medio))
     col9.metric("Taxa Efetiva Média", format_percent(taxa_media))
 
-    st.markdown("### Evolução do Volume Operado")
+    st.markdown("### Evolução do Volume Operado (VOP)")
     volume_timeline = (
         df_filtered.groupby("competencia", as_index=False)["total_bruto_duplicata"].sum().sort_values("competencia")
     )
@@ -426,14 +486,14 @@ with overview_tab:
         x="competencia",
         y="total_bruto_duplicata",
         labels={"total_bruto_duplicata": "Volume Operado (R$)", "competencia": "Competência"},
-        title="VOP mensal",
-        color_discrete_sequence=["#0f766e"],
+        color_discrete_sequence=[BRAND_COLOR_SCALE_PRIMARY[0]],
     )
-    fig_volume.update_layout(showlegend=False)
+    fig_volume.update_layout(showlegend=False, title_text="VOP Mensal", title_x=0.1)
     st.plotly_chart(fig_volume, use_container_width=True)
 
+    # --- IMPLEMENTAÇÃO DA SOLUÇÃO (ABRIR A CAIXA-PRETA) ---
     with st.expander("Ver dados absolutos da Série Histórica (Valores Absolutos por Mês)"):
-        st.caption("Estes são os valores absolutos pré-calculados que alimentam o gráfico acima.")
+        st.caption("Estes são os 'valores absolutos' pré-calculados que alimentam o gráfico acima.")
         dados_grafico = volume_timeline.copy()
         dados_grafico["competencia"] = dados_grafico["competencia"].dt.strftime("%Y-%m (%b)")
         dados_grafico["total_bruto_duplicata"] = dados_grafico["total_bruto_duplicata"].map(format_currency)
@@ -447,7 +507,9 @@ with overview_tab:
             use_container_width=True,
             hide_index=True,
         )
+    # --- FIM DA IMPLEMENTAÇÃO ---
 
+    st.markdown("### Visão Geral por Categoria")
     col_a, col_b = st.columns(2)
 
     if not df_base_filtered.empty:
@@ -466,9 +528,9 @@ with overview_tab:
                 labels={"valor_bruto_duplicata": "Volume (R$)", "grupo_economico": "Grupo"},
                 title="Top 5 Grupos Econômicos por Volume",
                 color="valor_bruto_duplicata",
-                color_continuous_scale="teal",
+                color_continuous_scale=BRAND_COLOR_SCALE_CONTINUOUS,
             )
-            fig_grupos.update_layout(coloraxis_showscale=False)
+            fig_grupos.update_layout(coloraxis_showscale=False, yaxis={'categoryorder':'total ascending'})
             col_a.plotly_chart(fig_grupos, use_container_width=True)
         else:
             col_a.info("Sem volume registrado para grupos econômicos no recorte atual.")
@@ -488,15 +550,15 @@ with overview_tab:
                 labels={"valor_bruto_duplicata": "Volume (R$)", "parceiro": "Parceiro"},
                 title="Top 5 Parceiros por Volume",
                 color="valor_bruto_duplicata",
-                color_continuous_scale="teal",
+                color_continuous_scale=BRAND_COLOR_SCALE_CONTINUOUS,
             )
-            fig_parceiros.update_layout(coloraxis_showscale=False)
+            fig_parceiros.update_layout(coloraxis_showscale=False, yaxis={'categoryorder':'total ascending'})
             col_b.plotly_chart(fig_parceiros, use_container_width=True)
         else:
             col_b.info("Sem parceiros com volume no período selecionado.")
     else:
-        col_a.info("Carregue dados operacionais para consultar grupos.")
-        col_b.info("Carregue dados operacionais para consultar parceiros.")
+        col_a.info("Não foi possível carregar dados operacionais para consultar grupos.")
+        col_b.info("Não foi possível carregar dados operacionais para consultar parceiros.")
 
     col_c, col_d = st.columns(2)
 
@@ -516,14 +578,14 @@ with overview_tab:
                 labels={"valor_bruto_duplicata": "Volume (R$)", "razao_social_financiador": "Financiador"},
                 title="Top 5 Financiadores por Volume",
                 color="valor_bruto_duplicata",
-                color_continuous_scale="teal",
+                color_continuous_scale=BRAND_COLOR_SCALE_CONTINUOUS,
             )
-            fig_financiadores.update_layout(coloraxis_showscale=False)
+            fig_financiadores.update_layout(coloraxis_showscale=False, yaxis={'categoryorder':'total ascending'})
             col_c.plotly_chart(fig_financiadores, use_container_width=True)
         else:
             col_c.info("Sem financiadores com volume no recorte atual.")
     else:
-        col_c.info("Carregue dados operacionais para consultar financiadores.")
+        col_c.info("Não foi possível carregar dados operacionais para consultar financiadores.")
 
     receita_series = (
         df_filtered.groupby("competencia", as_index=False)["total_receita_cashforce"].sum().sort_values("competencia")
@@ -535,13 +597,13 @@ with overview_tab:
         labels={"total_receita_cashforce": "Receita (R$)", "competencia": "Competência"},
         title="Receita Cashforce · Evolução Mensal",
         markers=True,
-        color_discrete_sequence=["#0f766e"],
+        color_discrete_sequence=[BRAND_COLOR_SCALE_PRIMARY[1]],
     )
     col_d.plotly_chart(fig_receita, use_container_width=True)
 
 
 with clients_tab:
-    sacados_tab, fornecedores_tab = st.tabs(["🏢 Sacados", "🚚 Fornecedores"])
+    sacados_tab, fornecedores_tab = st.tabs(["🏢 Sacados (Compradores)", "🚚 Fornecedores (Cedentes)"])
 
     with sacados_tab:
         st.subheader("Sacados · Engajamento dos Compradores")
@@ -553,7 +615,7 @@ with clients_tab:
         col1.metric("Grupos Econômicos Ativos", format_integer(grupos_total))
         col2.metric("Sacados Ativos (CNPJs)", format_integer(sacados_total))
 
-        st.markdown("### Crescimento de Novos Sacados")
+        st.markdown("### Crescimento de Novos Sacados (Primeira Operação)")
         if not df_base_filtered.empty:
             sacados_first_seen = (
                 df_base_filtered.dropna(subset=["cnpj_comprador", "data_operacao"])
@@ -576,14 +638,14 @@ with clients_tab:
                     y="novos_sacados",
                     labels={"novos_sacados": "Novos Sacados", "competencia": "Competência"},
                     color="novos_sacados",
-                    color_continuous_scale="teal",
+                    color_continuous_scale=BRAND_COLOR_SCALE_CONTINUOUS,
                 )
                 fig_novos.update_layout(coloraxis_showscale=False)
                 st.plotly_chart(fig_novos, use_container_width=True)
             else:
                 st.info("Sem dados para calcular novos sacados.")
         else:
-            st.info("Sem dados para calcular novos sacados.")
+            st.info("Sem dados operacionais para calcular novos sacados.")
 
         st.markdown("### Ranking de Grupos Econômicos")
         ranking_grupos = (
@@ -628,10 +690,10 @@ with clients_tab:
                 if pd.isna(dias):
                     return ""
                 if dias > 90:
-                    return "background-color: rgba(255, 100, 100, 0.25)"
+                    return "background-color: rgba(255, 100, 100, 0.25)"  # Risco
                 if dias > 30:
-                    return "background-color: rgba(255, 240, 100, 0.25)"
-                return "background-color: rgba(100, 255, 100, 0.2)"
+                    return "background-color: rgba(255, 240, 100, 0.25)"  # Atenção
+                return "background-color: rgba(100, 255, 100, 0.2)"  # Saudável
 
             st.dataframe(
                 health_display.style.applymap(color_health, subset=["dias_sem_operar"]),
@@ -663,9 +725,9 @@ with clients_tab:
                 orientation="h",
                 labels={"volume": "Volume (R$)", "razao_social_fornecedor": "Fornecedor"},
                 color="volume",
-                color_continuous_scale="teal",
+                color_continuous_scale=BRAND_COLOR_SCALE_CONTINUOUS,
             )
-            fig_fornecedores.update_layout(coloraxis_showscale=False)
+            fig_fornecedores.update_layout(coloraxis_showscale=False, yaxis={'categoryorder':'total ascending'})
             st.plotly_chart(fig_fornecedores, use_container_width=True)
         else:
             st.info("Sem fornecedores cadastrados para o recorte atual.")
@@ -689,12 +751,12 @@ with funding_tab:
 
     financiadores_total = df_base_filtered["razao_social_financiador"].nunique(dropna=True)
     taxa_media_fin = weighted_average(
-        df_base_filtered["taxa_efetiva_mes_percentual"] if "taxa_efetiva_mes_percentual" in df_base_filtered else pd.Series(dtype=float),
-        df_base_filtered["valor_bruto_duplicata"] if "valor_bruto_duplicata" in df_base_filtered else pd.Series(dtype=float),
+        df_base_filtered.get("taxa_efetiva_mes_percentual"),
+        df_base_filtered.get("valor_bruto_duplicata"),
     )
     prazo_ponderado = weighted_average(
-        df_base_filtered["prazo_medio_operacao"] if "prazo_medio_operacao" in df_base_filtered else pd.Series(dtype=float),
-        df_base_filtered["valor_bruto_duplicata"] if "valor_bruto_duplicata" in df_base_filtered else pd.Series(dtype=float),
+        df_base_filtered.get("prazo_medio_operacao"),
+        df_base_filtered.get("valor_bruto_duplicata"),
     )
 
     col1, col2, col3 = st.columns(3)
@@ -717,53 +779,55 @@ with funding_tab:
             orientation="h",
             labels={"valor_bruto_duplicata": "Volume (R$)", "razao_social_financiador": "Financiador"},
             color="valor_bruto_duplicata",
-            color_continuous_scale="teal",
+            color_continuous_scale=BRAND_COLOR_SCALE_CONTINUOUS,
         )
-        fig_volume_fin.update_layout(coloraxis_showscale=False)
+        fig_volume_fin.update_layout(coloraxis_showscale=False, yaxis={'categoryorder':'total ascending'})
         st.plotly_chart(fig_volume_fin, use_container_width=True)
     else:
         st.info("Sem financiadores para exibir.")
 
     st.markdown("### Taxa Efetiva por Financiador")
     taxa_financiador = (
-        df_base_filtered.dropna(subset=["razao_social_financiador"])
-        .groupby("razao_social_financiador")["taxa_efetiva_mes_percentual"]
-        .mean()
-        .reset_index()
+        df_base_filtered.dropna(subset=["razao_social_financiador", "taxa_efetiva_mes_percentual"])
+        .groupby("razao_social_financiador")
+        .apply(lambda x: weighted_average(x["taxa_efetiva_mes_percentual"], x["valor_bruto_duplicata"]))
+        .reset_index(name="taxa_media_ponderada")
+        .sort_values("taxa_media_ponderada", ascending=False)
     )
     if not taxa_financiador.empty:
         fig_taxa = px.bar(
             taxa_financiador,
-            x="taxa_efetiva_mes_percentual",
+            x="taxa_media_ponderada",
             y="razao_social_financiador",
             orientation="h",
-            labels={"taxa_efetiva_mes_percentual": "Taxa Efetiva (%)", "razao_social_financiador": "Financiador"},
-            color="taxa_efetiva_mes_percentual",
-            color_continuous_scale="teal",
+            labels={"taxa_media_ponderada": "Taxa Efetiva Ponderada (%)", "razao_social_financiador": "Financiador"},
+            color="taxa_media_ponderada",
+            color_continuous_scale=BRAND_COLOR_SCALE_CONTINUOUS,
         )
-        fig_taxa.update_layout(coloraxis_showscale=False)
+        fig_taxa.update_layout(coloraxis_showscale=False, yaxis={'categoryorder':'total ascending'})
         st.plotly_chart(fig_taxa, use_container_width=True)
     else:
         st.info("Não há dados de taxa efetiva para o recorte atual.")
 
     st.markdown("### Prazo Médio por Financiador")
     prazo_financiador = (
-        df_base_filtered.dropna(subset=["razao_social_financiador"])
-        .groupby("razao_social_financiador")["prazo_medio_operacao"]
-        .mean()
-        .reset_index()
+        df_base_filtered.dropna(subset=["razao_social_financiador", "prazo_medio_operacao"])
+        .groupby("razao_social_financiador")
+        .apply(lambda x: weighted_average(x["prazo_medio_operacao"], x["valor_bruto_duplicata"]))
+        .reset_index(name="prazo_medio_ponderado")
+        .sort_values("prazo_medio_ponderado", ascending=False)
     )
     if not prazo_financiador.empty:
         fig_prazo = px.bar(
             prazo_financiador,
-            x="prazo_medio_operacao",
+            x="prazo_medio_ponderado",
             y="razao_social_financiador",
             orientation="h",
-            labels={"prazo_medio_operacao": "Prazo Médio (dias)", "razao_social_financiador": "Financiador"},
-            color="prazo_medio_operacao",
-            color_continuous_scale="teal",
+            labels={"prazo_medio_ponderado": "Prazo Médio Ponderado (dias)", "razao_social_financiador": "Financiador"},
+            color="prazo_medio_ponderado",
+            color_continuous_scale=BRAND_COLOR_SCALE_CONTINUOUS,
         )
-        fig_prazo.update_layout(coloraxis_showscale=False)
+        fig_prazo.update_layout(coloraxis_showscale=False, yaxis={'categoryorder':'total ascending'})
         st.plotly_chart(fig_prazo, use_container_width=True)
     else:
         st.info("Sem dados de prazo médio para os financiadores selecionados.")
@@ -780,7 +844,7 @@ with funding_tab:
         y="total_receita_cashforce",
         labels={"total_receita_cashforce": "Receita (R$)", "competencia": "Competência"},
         markers=True,
-        color_discrete_sequence=["#047857"],
+        color_discrete_sequence=[BRAND_COLOR_SCALE_PRIMARY[1]],
     )
     st.plotly_chart(fig_receita_fin, use_container_width=True)
 
@@ -788,24 +852,28 @@ with funding_tab:
 with explorer_tab:
     st.subheader("Explorador Operacional · Pesquisa de Operações")
     st.caption(
-        "Filtra diretamente a tabela base `propostas`. Os filtros globais continuam ativos; refine abaixo para consultas pontuais."
+        "Filtra diretamente a tabela base `propostas`. Os filtros globais (período, parceiro, financiador) já estão aplicados."
     )
 
     if df_base_filtered.empty:
-        st.info("Carregue dados da tabela base para utilizar o explorador.")
+        st.info("Não foi possível carregar dados operacionais. Ajuste os filtros principais.")
     else:
         hoje = end_date
         default_explorer_start = max(start_date, hoje - timedelta(days=30))
+        
+        # --- FILTROS LOCAIS DA ABA ---
         col1, col2 = st.columns([2, 1])
         search_term = col1.text_input(
-            "Pesquisa rápida",
-            placeholder="Busque por NFID, CNPJ do comprador ou fornecedor",
+            "Pesquisa rápida (NFID, CNPJ Comprador/Fornecedor)",
+            placeholder="Busque por NFID, CNPJ...",
         )
+        # Filtro de data local, limitado pelo filtro global
         date_filter = col2.date_input(
-            "Período de referência",
+            "Refinar período (dentro do filtro global)",
             value=(default_explorer_start, end_date),
             min_value=start_date,
             max_value=end_date,
+            key="explorer_date_range"
         )
 
         if isinstance(date_filter, tuple) and len(date_filter) == 2:
@@ -821,7 +889,10 @@ with explorer_tab:
         selected_pagamentos = col3.multiselect("Status de Pagamento", status_pagamento_opts, default=status_pagamento_opts)
         selected_propostas = col4.multiselect("Status de Proposta", status_proposta_opts, default=status_proposta_opts)
 
+        # --- APLICAÇÃO DOS FILTROS LOCAIS ---
         explorer_df = df_base_filtered.copy()
+        
+        # Filtro de data local
         explorer_df = explorer_df[
             (explorer_df["data_operacao"].dt.date >= op_start)
             & (explorer_df["data_operacao"].dt.date <= op_end)
@@ -840,6 +911,22 @@ with explorer_tab:
                 | explorer_df["cnpj_fornecedor"].fillna("").str.lower().str.contains(search_lower)
             ]
 
+        # --- KPIS DE VALIDAÇÃO (PARA O CEO) ---
+        st.markdown("### Totais de Validação (Dados Brutos Filtrados)")
+        st.caption("Estes são os totais brutos dos registros filtrados abaixo (limitado a 500 linhas para exibição).")
+
+        total_bruto_explorador = explorer_df['valor_bruto_duplicata'].sum()
+        total_linhas_explorador = len(explorer_df)
+        total_propostas_explorador = explorer_df['numero_proposta'].nunique()
+
+        val_col1, val_col2, val_col3 = st.columns(3)
+        val_col1.metric("Volume Bruto (Filtrado)", format_currency(total_bruto_explorador))
+        val_col2.metric("Total de Linhas (Duplicatas)", format_integer(total_linhas_explorador))
+        val_col3.metric("Total de Propostas Únicas", format_integer(total_propostas_explorador))
+        
+        st.markdown("---")
+        
+        # --- EXIBIÇÃO DA TABELA ---
         explorer_df = explorer_df.sort_values("data_operacao", ascending=False)
         display_cols = [
             "data_operacao",
@@ -856,15 +943,22 @@ with explorer_tab:
             "status_pagamento",
             "status_proposta",
         ]
-        explorer_df = explorer_df[display_cols].head(500).copy()
+        # Garantir que colunas existem antes de selecionar
+        display_cols_exist = [col for col in display_cols if col in explorer_df.columns]
+        explorer_df_display = explorer_df[display_cols_exist].head(500).copy()
 
-        explorer_df["data_operacao"] = explorer_df["data_operacao"].dt.strftime("%d/%m/%Y")
-        explorer_df["valor_bruto_duplicata"] = explorer_df["valor_bruto_duplicata"].map(format_currency)
+        explorer_df_display["data_operacao"] = explorer_df_display["data_operacao"].dt.strftime("%d/%m/%Y")
+        explorer_df_display["valor_bruto_duplicata"] = explorer_df_display["valor_bruto_duplicata"].map(format_currency)
 
-        st.dataframe(explorer_df, use_container_width=True, hide_index=True)
+        st.dataframe(explorer_df_display, use_container_width=True, hide_index=True)
 
+# --- 12. RODAPÉ DA SIDEBAR ---
 st.sidebar.markdown("---")
 st.sidebar.info(
-    "**Dica:** Use o Explorador Operacional para investigações pontuais sem sair do dashboard. "
-    "Os dados são atualizados a cada sincronização do ETL."
+    """
+    **Dica:** Use o **Explorador Operacional** para
+    investigações pontuais sem sair do dashboard.
+    
+    Os dados são atualizados a cada sincronização do ETL.
+    """
 )
