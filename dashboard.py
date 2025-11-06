@@ -496,10 +496,11 @@ with overview_tab:
 
     # Renderização dos KPIs
     col1, col2, col3, col4 = st.columns(4)
+
     col1.metric("Volume Operado (VOP)", format_currency(volume_total))
-    col2.metric("Duplicatas Transacionadas", format_integer(duplicatas_transacionadas))
-    col3.metric("Total de Operações", format_integer(total_operacoes))
-    col4.metric("Total de Propostas", format_integer(total_propostas))
+    col2.metric("Total de Propostas (Negócios)", format_integer(total_propostas))
+    col3.metric("Total de Notas Fiscais (NFIDs)", format_integer(duplicatas_transacionadas))
+    col4.metric("Total de Duplicatas (Linhas)", format_integer(total_operacoes))
 
     col5, col6, col7, col8, col9 = st.columns(5)
     col5.metric("Grupos Econômicos Ativos", format_integer(grupos_ativos))

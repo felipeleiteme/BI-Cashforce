@@ -1,6 +1,10 @@
 -- Consolidated monthly view + materialized view + refresh helper
 -- Execute this script no Supabase SQL Editor
 
+-- Garantir que a versão antiga seja removida (evita falta de colunas novas)
+drop view if exists public.propostas_resumo_mensal cascade;
+drop materialized view if exists public.propostas_resumo_mensal_mv cascade;
+
 -- 1. Materialized view com agregações mensais
 create materialized view if not exists public.propostas_resumo_mensal_mv as
 select
