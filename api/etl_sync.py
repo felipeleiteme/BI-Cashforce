@@ -2,6 +2,7 @@ import os
 import json
 import gspread
 import pandas as pd
+from gspread.exceptions import WorksheetNotFound
 from supabase import create_client, Client
 from http.server import BaseHTTPRequestHandler
 from datetime import datetime
@@ -295,26 +296,36 @@ class handler(BaseHTTPRequestHandler):
             # --- INÍCIO DA MELHORIA: BUSCAR KPI DE RITMO ---
             print("[INFO] Buscando KPIs de Ritmo do Google Sheets...")
             try:
-                worksheet_ritmo = spreadsheet.worksheet("Ritmo (faturamento)")
-                worksheet_dias = spreadsheet.worksheet("Dias para o fim do mês")
+                def get_worksheet_safe(sheet, title):
+                    try:
+                        return sheet.worksheet(title)
+                    except WorksheetNotFound:
+                        for ws in sheet.worksheets():
+                            if ws.title.strip().lower() == title.strip().lower():
+                                return ws
+                        raise
 
-                ritmo_bruto_str = worksheet_ritmo.acell('B2').value
-                dias_restantes_str = worksheet_dias.acell('A2').value
+                worksheet_ritmo = get_worksheet_safe(spreadsheet, "Ritmo (faturamento)")
+                worksheet_dias = get_worksheet_safe(spreadsheet, "Dias para o fim do mês")
+
+                ritmo_bruto_str = worksheet_ritmo.acell('B2').value or ""
+                dias_restantes_str = worksheet_dias.acell('A2').value or ""
 
                 ritmo_projetado = clean_currency(ritmo_bruto_str)
                 dias_restantes = clean_integer(dias_restantes_str)
                 dias_restantes_text = str(dias_restantes) if dias_restantes is not None else "N/A"
 
+                payload = {
+                    'id': 1,
+                    'updated_at': datetime.utcnow().isoformat()
+                }
                 if ritmo_projetado is not None:
-                    supabase.table('kpis_atuais').upsert({
-                        'id': 1,
-                        'ritmo_projetado': ritmo_projetado,
-                        'dias_restantes_mes': dias_restantes_text,
-                        'updated_at': datetime.utcnow().isoformat()
-                    }).execute()
-                    print(f"[INFO] KPIs de Ritmo atualizados: R$ {ritmo_projetado}, Dias {dias_restantes_text}")
-                else:
-                    print("[WARN] Não foi possível ler o KPI de Ritmo da planilha (valor nulo).")
+                    payload['ritmo_projetado'] = ritmo_projetado
+                if dias_restantes_text:
+                    payload['dias_restantes_mes'] = dias_restantes_text
+
+                supabase.table('kpis_atuais').upsert(payload).execute()
+                print(f"[INFO] KPIs de Ritmo atualizados: R$ {ritmo_projetado or 0}, Dias {dias_restantes_text}")
 
             except Exception as kpi_error:
                 print(f"[WARN] Falha ao buscar KPIs de Ritmo: {kpi_error}")

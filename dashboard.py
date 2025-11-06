@@ -483,7 +483,21 @@ with overview_tab:
     kpi_data = load_kpi_data()
     ritmo_projetado = kpi_data.get("ritmo_projetado", 0)
     dias_restantes_text = kpi_data.get("dias_restantes_mes", "N/A")
-    dias_restantes_help = f"{dias_restantes_text} dias restantes no mês (dados Google Sheets)"
+    updated_at_raw = kpi_data.get("updated_at")
+    if isinstance(updated_at_raw, str) and updated_at_raw.endswith("Z"):
+        updated_at_raw = updated_at_raw.replace("Z", "+00:00")
+    try:
+        updated_at_display = (
+            datetime.fromisoformat(updated_at_raw).strftime("%d/%m/%Y %H:%M")
+            if updated_at_raw
+            else "N/A"
+        )
+    except Exception:
+        updated_at_display = "N/A"
+
+    dias_restantes_help = (
+        f"{dias_restantes_text} dias restantes no mês (dados Google Sheets). Atualizado em {updated_at_display} UTC"
+    )
 
     # KPIs da View Agregada (Rápidos)
     volume_total = df_filtered["total_bruto_duplicata"].sum()
@@ -521,6 +535,9 @@ with overview_tab:
     col3.metric("Total de Propostas (Negócios)", format_integer(total_propostas))
     col4.metric("Total de Notas Fiscais (NFIDs)", format_integer(total_nfids))
     col5.metric("Total de Duplicatas (Linhas)", format_integer(total_duplicatas))
+
+    if not ritmo_projetado:
+        st.caption("ℹ️ Ritmo ainda não atualizado. Execute o ETL para puxar os valores da planilha de Ritmo.")
 
     col6, col7, col8, col9, col10 = st.columns(5)
     col6.metric("Grupos Econômicos Ativos", format_integer(grupos_ativos))
