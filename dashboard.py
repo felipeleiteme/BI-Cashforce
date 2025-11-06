@@ -429,12 +429,15 @@ st.markdown("<hr style='border: none; height: 1px; background-color: var(--brand
 st.sidebar.header("Filtros")
 
 if isinstance(date_range, tuple) and len(date_range) == 2:
-    start_date, end_date = date_range
+    start_date_raw, end_date_raw = date_range
 else:
-    start_date = end_date = date_range  # type: ignore[assignment]
+    start_date_raw = end_date_raw = date_range  # type: ignore[assignment]
 
-if end_date > max_date:
-    end_date = max_date
+start_date = datetime.combine(start_date_raw, datetime.min.time())
+end_date = datetime.combine(end_date_raw, datetime.min.time())
+
+if end_date.date() > max_date:
+    end_date = datetime.combine(max_date, datetime.min.time())
 
 # Caption do período agora fica na sidebar
 st.sidebar.caption(f"Período selecionado: 📆 {start_date.strftime('%d/%m/%Y')} — {end_date.strftime('%d/%m/%Y')}")
