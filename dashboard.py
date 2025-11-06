@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 
 import numpy as np
 import pandas as pd
+from pandas.api.types import is_datetime64tz_dtype
 import plotly.express as px
 import streamlit as st
 from dotenv import load_dotenv
@@ -245,6 +246,8 @@ def load_view_data() -> pd.DataFrame:
         if df_view.empty:
             return df_view
         df_view["competencia"] = pd.to_datetime(df_view["competencia"], errors="coerce")
+        if is_datetime64tz_dtype(df_view["competencia"]):
+            df_view["competencia"] = df_view["competencia"].dt.tz_convert(None)
         numeric_cols = [
             "quantidade_operacoes",
             "total_nf_transportadas",
@@ -317,6 +320,8 @@ def load_base_data(
         for col in missing_cols:
             df_base[col] = pd.NA
         df_base["data_operacao"] = pd.to_datetime(df_base["data_operacao"], errors="coerce")
+        if is_datetime64tz_dtype(df_base["data_operacao"]):
+            df_base["data_operacao"] = df_base["data_operacao"].dt.tz_convert(None)
         for col in [
             "valor_bruto_duplicata",
             "valor_liquido_duplicata",
