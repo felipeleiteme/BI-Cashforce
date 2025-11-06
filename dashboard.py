@@ -450,8 +450,11 @@ selected_financiadores = st.sidebar.multiselect(
 
 # --- 10. FILTRAGEM E CARGA DE DADOS SECUNDÁRIA ---
 df_filtered = df_view.copy()
+start_month = datetime(start_date.year, start_date.month, 1)
+end_month = datetime(end_date.year, end_date.month, 1)
 df_filtered = df_filtered[
-    (df_filtered["competencia"].dt.date >= start_date) & (df_filtered["competencia"].dt.date <= end_date)
+    (df_filtered["competencia"] >= pd.Timestamp(start_month))
+    & (df_filtered["competencia"] <= pd.Timestamp(end_month))
 ]
 
 if selected_parceiros:
