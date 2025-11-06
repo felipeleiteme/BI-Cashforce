@@ -425,7 +425,8 @@ with header_col3:
         value=(default_start, max_date),
         min_value=min_date,
         max_value=max_date,
-        key="header_date_range"
+        key="header_date_range",
+        format="DD/MM/YYYY",
     )
 
 st.markdown("<hr style='border: none; height: 1px; background-color: var(--brand-border); margin: 1rem 0 2rem 0;'>", unsafe_allow_html=True)
