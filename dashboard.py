@@ -203,13 +203,9 @@ BRAND_COLOR_SCALE_CONTINUOUS = [[0, "#F0FFF9"], [0.5, "#00D98E"], [1, "#00B876"]
 try:
     SUPABASE_URL = st.secrets.get("SUPABASE_URL", os.getenv("SUPABASE_URL"))
     SUPABASE_KEY = st.secrets.get("SUPABASE_ANON_KEY", os.getenv("SUPABASE_ANON_KEY"))
-    SUPABASE_SERVICE_ROLE_KEY = st.secrets.get(
-        "SUPABASE_SERVICE_ROLE_KEY", os.getenv("SUPABASE_SERVICE_ROLE_KEY")
-    )
 except Exception:
     SUPABASE_URL = os.getenv("SUPABASE_URL")
     SUPABASE_KEY = os.getenv("SUPABASE_ANON_KEY")
-    SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
 
 
 @st.cache_resource
@@ -217,180 +213,10 @@ def get_supabase_client():
     if not SUPABASE_URL or not SUPABASE_KEY:
         st.error("⚠️ Defina SUPABASE_URL e SUPABASE_ANON_KEY para continuar.")
         st.stop()
-    client = create_client(SUPABASE_URL, SUPABASE_KEY)
-    session_tokens = st.session_state.get("auth_session")
-    if session_tokens:
-        try:
-            client.auth.set_session(session_tokens["access_token"], session_tokens["refresh_token"])
-        except Exception:
-            pass
-    return client
+    return create_client(SUPABASE_URL, SUPABASE_KEY)
 
 
 supabase = get_supabase_client()
-
-
-@st.cache_resource
-def get_supabase_admin_client():
-    if not SUPABASE_URL or not SUPABASE_SERVICE_ROLE_KEY:
-        return None
-    try:
-        return create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
-    except Exception as admin_err:
-        print(f"[AUTH] Falha ao criar client admin: {admin_err}")
-        return None
-
-
-def create_or_update_user_password(email: str, new_password: str) -> tuple[bool, str]:
-    admin_client = get_supabase_admin_client()
-    if not admin_client:
-        return False, "Admin Supabase não configurado. Defina SUPABASE_SERVICE_ROLE_KEY."
-
-    # Tentar criar usuário já confirmado
-    try:
-        admin_client.auth.admin.create_user(
-            {
-                "email": email,
-                "password": new_password,
-                "email_confirm": True,
-            }
-        )
-        return True, "Usuário criado e senha definida com sucesso. Faça login."
-    except Exception as create_err:
-        error_message = str(create_err)
-        if "User already registered" not in error_message and "already exists" not in error_message:
-            print(f"[AUTH] Erro ao criar usuário {email}: {create_err}")
-            return False, "Não foi possível criar o usuário. Verifique o e-mail informado."
-
-    # Usuário já existe: procurar e atualizar senha
-    page = 1
-    per_page = 100
-    target_user = None
-    try:
-        while True:
-            resp = admin_client.auth.admin.list_users(page=page, per_page=per_page)
-            users = getattr(resp, "users", []) or []
-            if not users:
-                break
-            for user in users:
-                user_email = getattr(user, "email", "") or ""
-                if user_email.lower() == email.lower():
-                    target_user = user
-                    break
-            if target_user:
-                break
-            page += 1
-    except Exception as list_err:
-        print(f"[AUTH] Erro ao listar usuários para {email}: {list_err}")
-        return False, "Não foi possível localizar o usuário para atualizar a senha."
-
-    if not target_user:
-        return False, "Usuário não encontrado. Confira o e-mail informado."
-
-    try:
-        admin_client.auth.admin.update_user_by_id(
-            target_user.id,
-            {"password": new_password, "email_confirm": True},
-        )
-        return True, "Senha atualizada! Agora é só fazer login."
-    except Exception as update_err:
-        print(f"[AUTH] Erro ao atualizar senha de {email}: {update_err}")
-        return False, "Não foi possível atualizar a senha. Tente novamente ou contate o suporte."
-
-
-def ensure_authenticated(client):
-    if st.session_state.get("auth_session"):
-        return st.session_state["auth_session"]
-
-    st.markdown(
-        """
-        <div style="padding: 2rem; text-align: center;">
-            <h2 style="color: var(--brand-dark-blue);">Acesso Restrito</h2>
-            <p style="color: var(--brand-text-light);">Informe suas credenciais para visualizar o BI.</p>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-    with st.form("login_form"):
-        email = st.text_input("E-mail corporativo")
-        password = st.text_input("Senha", type="password")
-        submitted = st.form_submit_button("Entrar")
-
-    if submitted:
-        if not email or not password:
-            st.warning("Preencha e-mail e senha.")
-        else:
-            try:
-                auth_response = client.auth.sign_in_with_password({"email": email, "password": password})
-                session = auth_response.session
-                if not session:
-                    st.error("Não foi possível iniciar a sessão. Verifique as credenciais.")
-                else:
-                    st.session_state["auth_session"] = {
-                        "access_token": session.access_token,
-                        "refresh_token": session.refresh_token,
-                        "user_email": session.user.email if session.user else email,
-                    }
-                    client.auth.set_session(session.access_token, session.refresh_token)
-                    st.session_state["auth_user_email"] = session.user.email if session.user else email
-                    st.cache_data.clear()
-                    st.experimental_rerun()
-            except Exception as auth_error:
-                print(f"[AUTH] Falha ao autenticar usuário {email}: {auth_error}")
-                st.error("Credenciais inválidas ou usuário sem permissão.")
-
-    st.divider()
-    st.subheader("Primeiro acesso ou redefinir senha")
-    with st.form("set_password_form"):
-        reset_email = st.text_input("E-mail corporativo", key="reset_email_form")
-        new_password = st.text_input("Nova senha", type="password", key="new_password_form")
-        confirm_password = st.text_input("Confirmar nova senha", type="password", key="confirm_password_form")
-        set_password = st.form_submit_button("Definir / Atualizar senha")
-
-    if set_password:
-        if not reset_email or not new_password or not confirm_password:
-            st.warning("Preencha e-mail e a nova senha nos dois campos.")
-        elif new_password != confirm_password:
-            st.error("As senhas não conferem.")
-        elif len(new_password) < 8:
-            st.error("A senha deve ter pelo menos 8 caracteres.")
-        else:
-            ok, message = create_or_update_user_password(reset_email.strip(), new_password)
-            if ok:
-                st.success(message)
-            else:
-                st.error(message)
-
-    st.stop()
-
-
-ensure_authenticated(supabase)
-
-
-def render_user_controls(client):
-    user_email = st.session_state.get("auth_user_email") or st.session_state.get("auth_session", {}).get("user_email")
-    if user_email:
-        st.sidebar.markdown(
-            f"""
-            <div style="padding: 0.75rem 1rem; background: var(--brand-green-light); border-radius: 8px; margin-bottom: 1rem;">
-                <span style="display:block; font-size: 0.85rem; color: var(--brand-text-light);">Usuário autenticado</span>
-                <strong style="color: var(--brand-dark-blue);">{user_email}</strong>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-    if st.sidebar.button("Sair do Dashboard"):
-        try:
-            client.auth.sign_out()
-        except Exception as logout_error:
-            print(f"[AUTH] Erro ao encerrar sessão: {logout_error}")
-        st.session_state.pop("auth_session", None)
-        st.session_state.pop("auth_user_email", None)
-        st.cache_data.clear()
-        st.experimental_rerun()
-
-
-render_user_controls(supabase)
 
 
 # --- 5. FUNÇÕES DE CARREGAMENTO DE DADOS ---
