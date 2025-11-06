@@ -213,10 +213,90 @@ def get_supabase_client():
     if not SUPABASE_URL or not SUPABASE_KEY:
         st.error("⚠️ Defina SUPABASE_URL e SUPABASE_ANON_KEY para continuar.")
         st.stop()
-    return create_client(SUPABASE_URL, SUPABASE_KEY)
+    client = create_client(SUPABASE_URL, SUPABASE_KEY)
+    session_tokens = st.session_state.get("auth_session")
+    if session_tokens:
+        try:
+            client.auth.set_session(session_tokens["access_token"], session_tokens["refresh_token"])
+        except Exception:
+            pass
+    return client
 
 
 supabase = get_supabase_client()
+
+
+def ensure_authenticated(client):
+    if st.session_state.get("auth_session"):
+        return st.session_state["auth_session"]
+
+    st.markdown(
+        """
+        <div style="padding: 2rem; text-align: center;">
+            <h2 style="color: var(--brand-dark-blue);">Acesso Restrito</h2>
+            <p style="color: var(--brand-text-light);">Informe suas credenciais para visualizar o BI.</p>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+    with st.form("login_form"):
+        email = st.text_input("E-mail corporativo")
+        password = st.text_input("Senha", type="password")
+        submitted = st.form_submit_button("Entrar")
+
+    if submitted:
+        if not email or not password:
+            st.warning("Preencha e-mail e senha.")
+        else:
+            try:
+                auth_response = client.auth.sign_in_with_password({"email": email, "password": password})
+                session = auth_response.session
+                if not session:
+                    st.error("Não foi possível iniciar a sessão. Verifique as credenciais.")
+                else:
+                    st.session_state["auth_session"] = {
+                        "access_token": session.access_token,
+                        "refresh_token": session.refresh_token,
+                        "user_email": session.user.email if session.user else email,
+                    }
+                    client.auth.set_session(session.access_token, session.refresh_token)
+                    st.session_state["auth_user_email"] = session.user.email if session.user else email
+                    st.cache_data.clear()
+                    st.experimental_rerun()
+            except Exception as auth_error:
+                print(f"[AUTH] Falha ao autenticar usuário {email}: {auth_error}")
+                st.error("Credenciais inválidas ou usuário sem permissão.")
+
+    st.stop()
+
+
+ensure_authenticated(supabase)
+
+
+def render_user_controls(client):
+    user_email = st.session_state.get("auth_user_email") or st.session_state.get("auth_session", {}).get("user_email")
+    if user_email:
+        st.sidebar.markdown(
+            f"""
+            <div style="padding: 0.75rem 1rem; background: var(--brand-green-light); border-radius: 8px; margin-bottom: 1rem;">
+                <span style="display:block; font-size: 0.85rem; color: var(--brand-text-light);">Usuário autenticado</span>
+                <strong style="color: var(--brand-dark-blue);">{user_email}</strong>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+    if st.sidebar.button("Sair do Dashboard"):
+        try:
+            client.auth.sign_out()
+        except Exception as logout_error:
+            print(f"[AUTH] Erro ao encerrar sessão: {logout_error}")
+        st.session_state.pop("auth_session", None)
+        st.session_state.pop("auth_user_email", None)
+        st.cache_data.clear()
+        st.experimental_rerun()
+
+
+render_user_controls(supabase)
 
 
 # --- 5. FUNÇÕES DE CARREGAMENTO DE DADOS ---

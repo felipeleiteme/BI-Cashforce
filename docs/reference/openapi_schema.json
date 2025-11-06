@@ -261,10 +261,59 @@
                       "grupo_economico": { "type": "string" },
                       "razao_social_comprador": { "type": "string" },
                       "parceiro": { "type": "string" },
+                      "razao_social_financiador": { "type": "string" },
                       "quantidade_operacoes": { "type": "integer" },
+                      "total_nf_transportadas": { "type": "integer" },
+                      "total_sacados": { "type": "integer" },
+                      "total_fornecedores": { "type": "integer" },
                       "total_bruto_duplicata": { "type": "number" },
                       "total_liquido_duplicata": { "type": "number" },
-                      "total_receita_cashforce": { "type": "number" }
+                      "total_receita_cashforce": { "type": "number" },
+                      "total_propostas": { "type": "integer" },
+                      "taxa_efetiva_media": { "type": "number" },
+                      "prazo_medio": { "type": "number" }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/kpis_atuais": {
+      "get": {
+        "operationId": "getKpisAtuais",
+        "summary": "Obter KPIs de Ritmo e Projeção",
+        "description": "Retorna os KPIs pré-calculados da planilha, como Ritmo (projeção) e dias restantes.",
+        "parameters": [
+          {
+            "name": "select",
+            "in": "query",
+            "description": "Colunas a retornar",
+            "schema": { "type": "string", "default": "*" }
+          },
+          {
+            "name": "id",
+            "in": "query",
+            "description": "Filtrar pelo ID (usar sempre eq.1)",
+            "schema": { "type": "string", "default": "eq.1" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Lista de KPIs (deve conter 1 item)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": { "type": "integer" },
+                      "ritmo_projetado": { "type": "number" },
+                      "dias_restantes_mes": { "type": "string" },
+                      "updated_at": { "type": "string", "format": "date-time" }
                     }
                   }
                 }
