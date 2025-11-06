@@ -95,6 +95,37 @@ st.markdown(
         display: none !important;
     }
 
+    /* --- INÍCIO: Correção Cores DatePicker (Branding Cashforce) --- */
+
+    [data-baseweb="calendar"] .CalendarDay--selected,
+    [data-baseweb="calendar"] .CalendarDay--selected:hover {
+        background-color: var(--brand-green) !important;
+        color: var(--brand-dark-blue) !important;
+        border-radius: 50% !important;
+    }
+
+    [data-baseweb="calendar"] .CalendarDay--selected-start,
+    [data-baseweb="calendar"] .CalendarDay--selected-end {
+        background-color: var(--brand-green) !important;
+        color: var(--brand-dark-blue) !important;
+        border-radius: 50% !important;
+    }
+
+    [data-baseweb="calendar"] .CalendarDay--selected-range {
+        background-color: var(--brand-green-light) !important;
+        color: var(--brand-green-dark) !important;
+        border: none !important;
+        border-radius: 0 !important;
+    }
+
+    [data-baseweb="calendar"] .CalendarDay:hover {
+        background-color: var(--brand-green-light) !important;
+        color: var(--brand-green-dark) !important;
+        border-radius: 50% !important;
+    }
+
+    /* --- FIM: Correção Cores DatePicker --- */
+
     /* --- Cards de KPI (Metrics) --- */
     [data-testid="stMetric"] {
         background: var(--brand-bg);
