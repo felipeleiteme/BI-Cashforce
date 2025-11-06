@@ -305,7 +305,7 @@ class handler(BaseHTTPRequestHandler):
                                 return ws
                         raise
 
-                worksheet_ritmo = get_worksheet_safe(spreadsheet, "Ritmo (faturamento)")
+                worksheet_ritmo = get_worksheet_safe(spreadsheet, "Ritmo")
                 worksheet_dias = get_worksheet_safe(spreadsheet, "Dias para o fim do mês")
 
                 ritmo_bruto_str = worksheet_ritmo.acell('B2').value or ""
