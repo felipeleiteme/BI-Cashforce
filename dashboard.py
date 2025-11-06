@@ -530,8 +530,8 @@ with overview_tab:
 
     # Renderização dos KPIs
     col1, col2, col3, col4, col5 = st.columns(5)
-    col1.metric("Volume Operado (VOP)", format_currency(volume_total))
-    col2.metric("Projeção (Ritmo) Mês", format_currency(ritmo_projetado), help=dias_restantes_help)
+    col1.metric("Projeção (Ritmo) Mês", format_currency(ritmo_projetado), help=dias_restantes_help)
+    col2.metric("Volume Operado (VOP)", format_currency(volume_total))
     col3.metric("Total de Propostas (Negócios)", format_integer(total_propostas))
     col4.metric("Total de Notas Fiscais (NFIDs)", format_integer(total_nfids))
     col5.metric("Total de Duplicatas (Linhas)", format_integer(total_duplicatas))
