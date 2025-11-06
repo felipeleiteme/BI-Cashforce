@@ -90,6 +90,11 @@ st.markdown(
         background: transparent;
     }
 
+    /* Remove tab highlight bar (laranja padrão do Streamlit) */
+    [data-baseweb="tab-highlight"] {
+        display: none !important;
+    }
+
     /* --- Cards de KPI (Metrics) --- */
     [data-testid="stMetric"] {
         background: var(--brand-bg);
