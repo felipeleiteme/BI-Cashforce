@@ -267,6 +267,20 @@ def ensure_authenticated(client):
                 print(f"[AUTH] Falha ao autenticar usuário {email}: {auth_error}")
                 st.error("Credenciais inválidas ou usuário sem permissão.")
 
+    st.divider()
+    st.subheader("Problemas para entrar?")
+    reset_email = st.text_input("Receba um e-mail de redefinição", key="reset_email")
+    if st.button("Esqueci minha senha"):
+        if not reset_email:
+            st.warning("Informe o e-mail corporativo para receber o link de redefinição.")
+        else:
+            try:
+                client.auth.reset_password_for_email(reset_email, options={"redirect_to": os.getenv("SITE_URL", "https://bi-cashforce.vercel.app")})
+                st.success("Enviamos um e-mail com instruções para redefinir a senha.")
+            except Exception as reset_error:
+                print(f"[AUTH] Falha ao enviar reset para {reset_email}: {reset_error}")
+                st.error("Não foi possível enviar o e-mail de redefinição. Verifique o endereço ou tente novamente mais tarde.")
+
     st.stop()
 
 
