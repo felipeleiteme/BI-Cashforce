@@ -215,9 +215,30 @@ BASE_COLUMNS = [
 
 
 @st.cache_data(ttl=3600)
-def load_base_data() -> pd.DataFrame:
+def load_base_data(
+    start_date, end_date, selected_parceiros: tuple[str, ...], selected_financiadores: tuple[str, ...]
+) -> pd.DataFrame:
     try:
-        data = _fetch_paginated("propostas", ",".join(BASE_COLUMNS))
+        start_iso = start_date.isoformat()
+        end_iso = end_date.isoformat()
+
+        parceiros_tuple = tuple(selected_parceiros)
+        financiadores_tuple = tuple(selected_financiadores)
+
+        def apply_filters_to_query(query):
+            query = query.gte("data_operacao", start_iso)
+            query = query.lte("data_operacao", end_iso)
+            if parceiros_tuple:
+                query = query.in_("parceiro", list(parceiros_tuple))
+            if financiadores_tuple:
+                query = query.in_("razao_social_financiador", list(financiadores_tuple))
+            return query
+
+        data = _fetch_paginated(
+            "propostas",
+            ",".join(BASE_COLUMNS),
+            apply_filters=apply_filters_to_query,
+        )
         df_base = pd.DataFrame(data)
         if df_base.empty:
             return pd.DataFrame(columns=BASE_COLUMNS)
@@ -347,28 +368,11 @@ if df_filtered.empty:
     st.warning("Nenhum dado encontrado para os filtros selecionados.")
     st.stop()
 
-df_base = load_base_data()
+df_base = load_base_data(start_date, end_date, tuple(selected_parceiros), tuple(selected_financiadores))
 if df_base.empty:
     st.warning("Não foi possível carregar a tabela base de operações para análises detalhadas.")
 
-
-def filter_base(df: pd.DataFrame) -> pd.DataFrame:
-    if df.empty:
-        return df
-    filtered = df[
-        (df["data_operacao"].dt.date >= start_date)
-        & (df["data_operacao"].dt.date <= end_date)
-    ]
-    if selected_parceiros:
-        filtered = filtered[filtered["parceiro"].isin(selected_parceiros)]
-    if selected_financiadores:
-        filtered = filtered[filtered["razao_social_financiador"].isin(selected_financiadores)]
-    return filtered
-
-
-df_base_filtered = (
-    filter_base(df_base) if not df_base.empty else pd.DataFrame(columns=BASE_COLUMNS)
-)
+df_base_filtered = df_base
 
 overview_tab, clients_tab, funding_tab, explorer_tab = st.tabs(
     ["🚀 Overview Estratégico", "👥 Análise de Clientes", "🏦 Análise de Funding", "🔍 Explorador Operacional"]
@@ -392,12 +396,12 @@ with overview_tab:
     )
 
     prazo_medio = weighted_average(
-        df_base_filtered["prazo_medio_operacao"] if "prazo_medio_operacao" in df_base_filtered else pd.Series(dtype=float),
-        df_base_filtered["valor_bruto_duplicata"] if "valor_bruto_duplicata" in df_base_filtered else pd.Series(dtype=float),
+        df_filtered.get("prazo_medio", pd.Series(dtype=float)),
+        df_filtered.get("total_bruto_duplicata", pd.Series(dtype=float)),
     )
     taxa_media = weighted_average(
-        df_base_filtered["taxa_efetiva_mes_percentual"] if "taxa_efetiva_mes_percentual" in df_base_filtered else pd.Series(dtype=float),
-        df_base_filtered["valor_bruto_duplicata"] if "valor_bruto_duplicata" in df_base_filtered else pd.Series(dtype=float),
+        df_filtered.get("taxa_efetiva_media", pd.Series(dtype=float)),
+        df_filtered.get("total_bruto_duplicata", pd.Series(dtype=float)),
     )
 
     col1, col2, col3, col4 = st.columns(4)
@@ -601,11 +605,20 @@ with clients_tab:
             health_check["dias_sem_operar"] = (
                 pd.Timestamp(datetime.now().date()) - health_check["ultima_operacao"]
             ).dt.days
-            health_check = health_check.sort_values("ultima_operacao", ascending=False)
+            health_display = health_check.sort_values("ultima_operacao", ascending=False).copy()
+            health_display["ultima_operacao"] = health_display["ultima_operacao"].dt.strftime("%d/%m/%Y")
+
+            def color_health(dias: float):
+                if pd.isna(dias):
+                    return ""
+                if dias > 90:
+                    return "background-color: rgba(255, 100, 100, 0.25)"
+                if dias > 30:
+                    return "background-color: rgba(255, 240, 100, 0.25)"
+                return "background-color: rgba(100, 255, 100, 0.2)"
+
             st.dataframe(
-                health_check.assign(
-                    ultima_operacao=health_check["ultima_operacao"].dt.strftime("%d/%m/%Y")
-                ),
+                health_display.style.applymap(color_health, subset=["dias_sem_operar"]),
                 use_container_width=True,
             )
         else:
