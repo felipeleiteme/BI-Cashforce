@@ -203,9 +203,13 @@ BRAND_COLOR_SCALE_CONTINUOUS = [[0, "#F0FFF9"], [0.5, "#00D98E"], [1, "#00B876"]
 try:
     SUPABASE_URL = st.secrets.get("SUPABASE_URL", os.getenv("SUPABASE_URL"))
     SUPABASE_KEY = st.secrets.get("SUPABASE_ANON_KEY", os.getenv("SUPABASE_ANON_KEY"))
+    SUPABASE_SERVICE_ROLE_KEY = st.secrets.get(
+        "SUPABASE_SERVICE_ROLE_KEY", os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+    )
 except Exception:
     SUPABASE_URL = os.getenv("SUPABASE_URL")
     SUPABASE_KEY = os.getenv("SUPABASE_ANON_KEY")
+    SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
 
 
 @st.cache_resource
@@ -224,6 +228,74 @@ def get_supabase_client():
 
 
 supabase = get_supabase_client()
+
+
+@st.cache_resource
+def get_supabase_admin_client():
+    if not SUPABASE_URL or not SUPABASE_SERVICE_ROLE_KEY:
+        return None
+    try:
+        return create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
+    except Exception as admin_err:
+        print(f"[AUTH] Falha ao criar client admin: {admin_err}")
+        return None
+
+
+def create_or_update_user_password(email: str, new_password: str) -> tuple[bool, str]:
+    admin_client = get_supabase_admin_client()
+    if not admin_client:
+        return False, "Admin Supabase não configurado. Defina SUPABASE_SERVICE_ROLE_KEY."
+
+    # Tentar criar usuário já confirmado
+    try:
+        admin_client.auth.admin.create_user(
+            {
+                "email": email,
+                "password": new_password,
+                "email_confirm": True,
+            }
+        )
+        return True, "Usuário criado e senha definida com sucesso. Faça login."
+    except Exception as create_err:
+        error_message = str(create_err)
+        if "User already registered" not in error_message and "already exists" not in error_message:
+            print(f"[AUTH] Erro ao criar usuário {email}: {create_err}")
+            return False, "Não foi possível criar o usuário. Verifique o e-mail informado."
+
+    # Usuário já existe: procurar e atualizar senha
+    page = 1
+    per_page = 100
+    target_user = None
+    try:
+        while True:
+            resp = admin_client.auth.admin.list_users(page=page, per_page=per_page)
+            users = getattr(resp, "users", []) or []
+            if not users:
+                break
+            for user in users:
+                user_email = getattr(user, "email", "") or ""
+                if user_email.lower() == email.lower():
+                    target_user = user
+                    break
+            if target_user:
+                break
+            page += 1
+    except Exception as list_err:
+        print(f"[AUTH] Erro ao listar usuários para {email}: {list_err}")
+        return False, "Não foi possível localizar o usuário para atualizar a senha."
+
+    if not target_user:
+        return False, "Usuário não encontrado. Confira o e-mail informado."
+
+    try:
+        admin_client.auth.admin.update_user_by_id(
+            target_user.id,
+            {"password": new_password, "email_confirm": True},
+        )
+        return True, "Senha atualizada! Agora é só fazer login."
+    except Exception as update_err:
+        print(f"[AUTH] Erro ao atualizar senha de {email}: {update_err}")
+        return False, "Não foi possível atualizar a senha. Tente novamente ou contate o suporte."
 
 
 def ensure_authenticated(client):
@@ -268,18 +340,26 @@ def ensure_authenticated(client):
                 st.error("Credenciais inválidas ou usuário sem permissão.")
 
     st.divider()
-    st.subheader("Problemas para entrar?")
-    reset_email = st.text_input("Receba um e-mail de redefinição", key="reset_email")
-    if st.button("Esqueci minha senha"):
-        if not reset_email:
-            st.warning("Informe o e-mail corporativo para receber o link de redefinição.")
+    st.subheader("Primeiro acesso ou redefinir senha")
+    with st.form("set_password_form"):
+        reset_email = st.text_input("E-mail corporativo", key="reset_email_form")
+        new_password = st.text_input("Nova senha", type="password", key="new_password_form")
+        confirm_password = st.text_input("Confirmar nova senha", type="password", key="confirm_password_form")
+        set_password = st.form_submit_button("Definir / Atualizar senha")
+
+    if set_password:
+        if not reset_email or not new_password or not confirm_password:
+            st.warning("Preencha e-mail e a nova senha nos dois campos.")
+        elif new_password != confirm_password:
+            st.error("As senhas não conferem.")
+        elif len(new_password) < 8:
+            st.error("A senha deve ter pelo menos 8 caracteres.")
         else:
-            try:
-                client.auth.reset_password_for_email(reset_email, options={"redirect_to": os.getenv("SITE_URL", "https://bi-cashforce.vercel.app")})
-                st.success("Enviamos um e-mail com instruções para redefinir a senha.")
-            except Exception as reset_error:
-                print(f"[AUTH] Falha ao enviar reset para {reset_email}: {reset_error}")
-                st.error("Não foi possível enviar o e-mail de redefinição. Verifique o endereço ou tente novamente mais tarde.")
+            ok, message = create_or_update_user_password(reset_email.strip(), new_password)
+            if ok:
+                st.success(message)
+            else:
+                st.error(message)
 
     st.stop()
 
