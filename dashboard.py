@@ -1070,11 +1070,22 @@ with explorer_tab:
 
 # --- 12. RODAPÉ DA SIDEBAR ---
 st.sidebar.markdown("---")
-st.sidebar.info(
+st.sidebar.markdown(
     """
-    **Dica:** Use o **Explorador Operacional** para
-    investigações pontuais sem sair do dashboard.
-    
-    Os dados são atualizados a cada sincronização do ETL.
-    """
+    <div style="
+        border-radius: 8px;
+        padding: 1rem;
+        background-color: var(--brand-green-light);
+        border-left: 4px solid var(--brand-green);
+        color: var(--brand-dark-blue);
+        margin-top: 1rem;
+        line-height: 1.4;
+    ">
+        <strong>Dica:</strong> Use o <strong>Explorador Operacional</strong> para investigações pontuais sem sair do dashboard.<br><br>
+        <span style="color: var(--brand-text-light);">
+            Os dados são atualizados a cada sincronização do ETL.
+        </span>
+    </div>
+    """,
+    unsafe_allow_html=True,
 )
