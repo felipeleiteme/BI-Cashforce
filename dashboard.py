@@ -332,6 +332,17 @@ def load_base_data(
         return pd.DataFrame()
 
 
+@st.cache_data(ttl=900)
+def load_kpi_data() -> dict:
+    """Carrega KPIs adicionais como ritmo projetado."""
+    try:
+        response = supabase.table("kpis_atuais").select("*").eq("id", 1).single().execute()
+        return response.data or {}
+    except Exception as exc:
+        print(f"Erro ao buscar KPIs de Ritmo: {exc}")
+        return {}
+
+
 # --- 6. FUNÇÕES HELPER DE FORMATAÇÃO ---
 def format_currency(value: float | None) -> str:
     if value is None or pd.isna(value):
@@ -469,6 +480,11 @@ overview_tab, clients_tab, funding_tab, explorer_tab = st.tabs(
 with overview_tab:
     st.subheader("Visão Executiva · Performance no Período")
 
+    kpi_data = load_kpi_data()
+    ritmo_projetado = kpi_data.get("ritmo_projetado", 0)
+    dias_restantes_text = kpi_data.get("dias_restantes_mes", "N/A")
+    dias_restantes_help = f"{dias_restantes_text} dias restantes no mês (dados Google Sheets)"
+
     # KPIs da View Agregada (Rápidos)
     volume_total = df_filtered["total_bruto_duplicata"].sum()
     total_propostas = (
@@ -499,19 +515,19 @@ with overview_tab:
     )
 
     # Renderização dos KPIs
-    col1, col2, col3, col4 = st.columns(4)
-
+    col1, col2, col3, col4, col5 = st.columns(5)
     col1.metric("Volume Operado (VOP)", format_currency(volume_total))
-    col2.metric("Total de Propostas (Negócios)", format_integer(total_propostas))
-    col3.metric("Total de Notas Fiscais (NFIDs)", format_integer(total_nfids))
-    col4.metric("Total de Duplicatas (Linhas)", format_integer(total_duplicatas))
+    col2.metric("Projeção (Ritmo) Mês", format_currency(ritmo_projetado), help=dias_restantes_help)
+    col3.metric("Total de Propostas (Negócios)", format_integer(total_propostas))
+    col4.metric("Total de Notas Fiscais (NFIDs)", format_integer(total_nfids))
+    col5.metric("Total de Duplicatas (Linhas)", format_integer(total_duplicatas))
 
-    col5, col6, col7, col8, col9 = st.columns(5)
-    col5.metric("Grupos Econômicos Ativos", format_integer(grupos_ativos))
-    col6.metric("Sacados Ativos (CNPJs)", format_integer(sacados_ativos))
-    col7.metric("Fornecedores Ativos (CNPJs)", format_integer(fornecedores_ativos))
-    col8.metric("Prazo Médio Ponderado", format_duration(prazo_medio))
-    col9.metric("Taxa Efetiva Média", format_percent(taxa_media))
+    col6, col7, col8, col9, col10 = st.columns(5)
+    col6.metric("Grupos Econômicos Ativos", format_integer(grupos_ativos))
+    col7.metric("Sacados Ativos (CNPJs)", format_integer(sacados_ativos))
+    col8.metric("Fornecedores Ativos (CNPJs)", format_integer(fornecedores_ativos))
+    col9.metric("Prazo Médio Ponderado", format_duration(prazo_medio))
+    col10.metric("Taxa Efetiva Média", format_percent(taxa_media))
 
     st.markdown("### Evolução do Volume Operado (VOP)")
     volume_timeline = (

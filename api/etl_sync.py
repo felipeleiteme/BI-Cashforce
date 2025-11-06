@@ -4,6 +4,7 @@ import gspread
 import pandas as pd
 from supabase import create_client, Client
 from http.server import BaseHTTPRequestHandler
+from datetime import datetime
 
 
 class handler(BaseHTTPRequestHandler):
@@ -290,6 +291,34 @@ class handler(BaseHTTPRequestHandler):
                 ).execute()
 
             print("[INFO] UPSERT em lotes concluído.")
+
+            # --- INÍCIO DA MELHORIA: BUSCAR KPI DE RITMO ---
+            print("[INFO] Buscando KPIs de Ritmo do Google Sheets...")
+            try:
+                worksheet_ritmo = spreadsheet.worksheet("Ritmo (faturamento)")
+                worksheet_dias = spreadsheet.worksheet("Dias para o fim do mês")
+
+                ritmo_bruto_str = worksheet_ritmo.acell('B2').value
+                dias_restantes_str = worksheet_dias.acell('A2').value
+
+                ritmo_projetado = clean_currency(ritmo_bruto_str)
+                dias_restantes = clean_integer(dias_restantes_str)
+                dias_restantes_text = str(dias_restantes) if dias_restantes is not None else "N/A"
+
+                if ritmo_projetado is not None:
+                    supabase.table('kpis_atuais').upsert({
+                        'id': 1,
+                        'ritmo_projetado': ritmo_projetado,
+                        'dias_restantes_mes': dias_restantes_text,
+                        'updated_at': datetime.utcnow().isoformat()
+                    }).execute()
+                    print(f"[INFO] KPIs de Ritmo atualizados: R$ {ritmo_projetado}, Dias {dias_restantes_text}")
+                else:
+                    print("[WARN] Não foi possível ler o KPI de Ritmo da planilha (valor nulo).")
+
+            except Exception as kpi_error:
+                print(f"[WARN] Falha ao buscar KPIs de Ritmo: {kpi_error}")
+            # --- FIM DA MELHORIA ---
 
             # Passo 6.1: Atualizar agregados (materialized view)
             try:
