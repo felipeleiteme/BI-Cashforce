@@ -471,9 +471,9 @@ with overview_tab:
 
     # KPIs da View Agregada (Rápidos)
     volume_total = df_filtered["total_bruto_duplicata"].sum()
-    total_operacoes = df_filtered["quantidade_operacoes"].sum()
     total_propostas = df_filtered.get("total_propostas", pd.Series(dtype=float)).sum()
-    duplicatas_transacionadas = df_filtered["total_nf_transportadas"].sum()
+    total_nfids = df_filtered["total_nf_transportadas"].sum()
+    total_duplicatas = df_filtered["quantidade_operacoes"].sum()
     grupos_ativos = df_filtered["grupo_economico"].dropna().nunique()
     
     # KPIs da Tabela Base (Processamento Ponderado)
@@ -499,8 +499,8 @@ with overview_tab:
 
     col1.metric("Volume Operado (VOP)", format_currency(volume_total))
     col2.metric("Total de Propostas (Negócios)", format_integer(total_propostas))
-    col3.metric("Total de Notas Fiscais (NFIDs)", format_integer(duplicatas_transacionadas))
-    col4.metric("Total de Duplicatas (Linhas)", format_integer(total_operacoes))
+    col3.metric("Total de Notas Fiscais (NFIDs)", format_integer(total_nfids))
+    col4.metric("Total de Duplicatas (Linhas)", format_integer(total_duplicatas))
 
     col5, col6, col7, col8, col9 = st.columns(5)
     col5.metric("Grupos Econômicos Ativos", format_integer(grupos_ativos))
@@ -685,7 +685,7 @@ with clients_tab:
             .groupby("grupo_economico")
             .agg(
                 volume=("valor_bruto_duplicata", "sum"),
-                operacoes=("nfid", "count"),
+                duplicatas=("nfid", "count"),
                 propostas=("numero_proposta", "nunique"),
             )
             .reset_index()
@@ -697,7 +697,7 @@ with clients_tab:
                 ranking_grupos.assign(
                     volume=ranking_grupos["volume"].map(format_currency),
                     ticket_medio=ranking_grupos["ticket_medio"].map(format_currency),
-                ),
+                ).rename(columns={"duplicatas": "Duplicatas", "propostas": "Propostas"}),
                 use_container_width=True,
             )
         else:
@@ -744,7 +744,7 @@ with clients_tab:
         ranking_fornecedores = (
             df_base_filtered.dropna(subset=["cnpj_fornecedor"])
             .groupby(["cnpj_fornecedor", "razao_social_fornecedor"])
-            .agg(volume=("valor_bruto_duplicata", "sum"), operacoes=("nfid", "count"))
+            .agg(volume=("valor_bruto_duplicata", "sum"), duplicatas=("nfid", "count"))
             .reset_index()
             .sort_values("volume", ascending=False)
             .head(10)
