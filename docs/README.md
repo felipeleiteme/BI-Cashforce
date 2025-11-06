@@ -45,10 +45,11 @@ Google Sheets → ETL (Vercel) → Supabase (propostas)
 | Caminho | Conteúdo |
 |---------|----------|
 | [`../README.md`](../README.md) | README principal do projeto |
-| [`../ARCHITECTURE.md`](../ARCHITECTURE.md) | 🆕 Arquitetura técnica completa v2.0 |
+| [`docs/reference/architecture.md`](./reference/architecture.md) | Arquitetura técnica completa v2.0 |
 | [`docs/guides/setup.md`](./guides/setup.md) | Configuração completa (Google Cloud, Supabase, Vercel, Streamlit) |
 | [`docs/guides/deploy.md`](./guides/deploy.md) | Checklist de deploy (APIs + Dashboard) |
 | [`docs/guides/troubleshooting.md`](./guides/troubleshooting.md) | Procedimentos de diagnóstico e correção |
+| [`docs/guides/recarregar-dashboard.md`](./guides/recarregar-dashboard.md) | Limpeza de cache e recarregamento forçado do dashboard |
 
 ### 🔧 Referências Técnicas
 
@@ -57,6 +58,13 @@ Google Sheets → ETL (Vercel) → Supabase (propostas)
 | [`docs/reference/database.md`](./reference/database.md) | Esquema detalhado da tabela `propostas` (59 colunas) |
 | [`docs/reference/openapi_schema.json`](./reference/openapi_schema.json) | Schema OpenAPI para GPT Actions |
 | [`docs/assistant/gpt_setup.md`](./assistant/gpt_setup.md) | Configuração do assistente GPT customizado |
+
+### 🗒️ Notas e Histórico
+
+| Caminho | Conteúdo |
+|---------|----------|
+| [`docs/notes/dashboard-update-summary.md`](./notes/dashboard-update-summary.md) | Log das principais melhorias aplicadas ao dashboard |
+| [`docs/notes/refatoracao-sidebar-v4.md`](./notes/refatoracao-sidebar-v4.md) | Registro da estratégia de refatoração da sidebar (v4) |
 
 ## 🛠️ Ferramentas e Scripts
 
